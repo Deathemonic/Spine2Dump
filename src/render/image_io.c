@@ -40,6 +40,21 @@ static int read_file(const char* filename, unsigned char** data, size_t* size) {
     return 0;
 }
 
+PngEncodeOptions png_encode_options_for(PngCompressionPreset preset) {
+    switch (preset) {
+        case PNG_COMPRESSION_FAST:
+            return (PngEncodeOptions){.compression_level = 1,
+                                      .filter_choice = SPNG_FILTER_CHOICE_NONE};
+        case PNG_COMPRESSION_SMALL:
+            return (PngEncodeOptions){.compression_level = 9,
+                                      .filter_choice = SPNG_FILTER_CHOICE_ALL};
+        case PNG_COMPRESSION_BALANCED:
+        default:
+            return (PngEncodeOptions){.compression_level = 6,
+                                      .filter_choice = SPNG_FILTER_CHOICE_NONE};
+    }
+}
+
 int image_decode_png32_file(unsigned char** out,
                             unsigned* width,
                             unsigned* height,
@@ -95,7 +110,8 @@ int image_decode_png32_file(unsigned char** out,
 int image_encode_png32_file(const char* filename,
                             const unsigned char* image,
                             unsigned width,
-                            unsigned height) {
+                            unsigned height,
+                            const PngEncodeOptions* options) {
     spng_ctx* ctx = spng_ctx_new(SPNG_CTX_ENCODER);
     if (ctx == NULL) {
         return -1;
@@ -110,6 +126,12 @@ int image_encode_png32_file(const char* filename,
     int error = spng_set_ihdr(ctx, &ihdr);
     if (error == 0) {
         error = spng_set_option(ctx, SPNG_ENCODE_TO_BUFFER, 1);
+    }
+    if (error == 0 && options != NULL) {
+        error = spng_set_option(ctx, SPNG_IMG_COMPRESSION_LEVEL, options->compression_level);
+    }
+    if (error == 0 && options != NULL) {
+        error = spng_set_option(ctx, SPNG_FILTER_CHOICE, options->filter_choice);
     }
     if (error == 0) {
         error = spng_encode_image(ctx, image, (size_t)width * (size_t)height * 4, SPNG_FMT_PNG,

@@ -364,6 +364,7 @@ static double animation_frame_time(double start, double end, double fps, int fra
 static int compute_animation_crop(spSkeletonData* data,
                                   spAtlas* atlas,
                                   const char* atlas_dir,
+                                  const CpuAtlasPages* pages,
                                   spAnimation* animation,
                                   const SpineDumpOptions* options,
                                   double start,
@@ -383,6 +384,7 @@ static int compute_animation_crop(spSkeletonData* data,
             .atlas = atlas,
             .atlas_dir = atlas_dir,
             .options = &options->render,
+            .pages = pages,
         };
         RgbaImage image = {};
         int result = cpu_renderer_render_image(&request, &image);
@@ -447,10 +449,17 @@ static int dump_one_animation(spSkeletonData* data,
 
     ZF_LOGI("dumping %s: %.3fs to %.3fs, %d frames", animation->name, start, end, frame_count);
 
+    CpuAtlasPages* pages = cpu_atlas_pages_load(atlas, atlas_dir);
+    if (pages == NULL) {
+        ZF_LOGE("could not load atlas pages for %s", animation->name);
+        return -1;
+    }
+
     RenderCropRect animation_crop = {};
     if (options->trim_mode == RENDER_TRIM_ANIMATION &&
-        compute_animation_crop(data, atlas, atlas_dir, animation, options, start, end, frame_count,
-                               &animation_crop) != 0) {
+        compute_animation_crop(data, atlas, atlas_dir, pages, animation, options, start, end,
+                               frame_count, &animation_crop) != 0) {
+        cpu_atlas_pages_free(pages);
         return -1;
     }
 
@@ -459,6 +468,7 @@ static int dump_one_animation(spSkeletonData* data,
 
         spSkeleton* skeleton = create_animation_skeleton(data, animation, time);
         if (skeleton == NULL) {
+            cpu_atlas_pages_free(pages);
             return -1;
         }
 
@@ -476,6 +486,7 @@ static int dump_one_animation(spSkeletonData* data,
                          .atlas = atlas,
                          .atlas_dir = atlas_dir,
                          .options = &options->render,
+                         .pages = pages,
                          },
             .output_path = output_path,
             .forced_crop = forced_crop,
@@ -483,12 +494,14 @@ static int dump_one_animation(spSkeletonData* data,
         if (path_join(animation_dir, file_name, output_path, sizeof(output_path)) != 0 ||
             cpu_renderer_render_png(&render_request) != 0) {
             spSkeleton_dispose(skeleton);
+            cpu_atlas_pages_free(pages);
             return -1;
         }
 
         spSkeleton_dispose(skeleton);
     }
 
+    cpu_atlas_pages_free(pages);
     return 0;
 }
 

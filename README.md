@@ -13,7 +13,7 @@ Supports Spine `3.5`, `3.6`, `3.7`, `3.8`, `4.0`, `4.1`, and `4.2`.
 ```shell
 # Input should always be a directory containing .skel, .atlas, and .png
 
-# Inspect a folder: list and validate the assets, print skeleton info, animations, and expression candidates
+# Inspect spine, list and validate the assets, print skeleton info, animations, and expression candidates
 spine2dump inspect ./assets
 
 # Dump spine animation frames as numbered PNGs
@@ -78,6 +78,7 @@ spine2dump dump ./assets -o ./output --stills
 | `--trim-mode <mode>`          | Animation crop behavior                       | `none`, `frame`, `animation` |
 | `--trim-padding <px>`         | Padding kept around trimmed bounds            | `0`                 |
 | `--alpha-threshold <0-255>`   | Minimum alpha counted as visible              |                     |
+| `--compression <preset>`      | PNG compression preset (all lossless)         | `fast`, `balanced`, `small` |
 | `--help`                      | Print help                                    |                     |
 
 The animation/time options (`--animation`, `--start`, `--end`, `--fps`, `--trim-mode`) are ignored in `--stills` mode.

@@ -28,6 +28,8 @@ function(prefix_header out_file prefix)
         spine_backend_list_expressions
         cpu_renderer_render_image
         cpu_renderer_render_png
+        cpu_atlas_pages_load
+        cpu_atlas_pages_free
     )
 
     foreach(source IN LISTS ARGN)

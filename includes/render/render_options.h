@@ -1,6 +1,8 @@
 #ifndef SPINE2DUMP_RENDER_OPTIONS_H
 #define SPINE2DUMP_RENDER_OPTIONS_H
 
+#include "image_io.h"
+
 typedef enum RenderTrimMode {
     RENDER_TRIM_NONE = 0,
     RENDER_TRIM_FRAME = 1,
@@ -14,6 +16,7 @@ typedef struct RenderOptions {
     int trim;
     int trim_padding;
     unsigned char alpha_threshold;
+    PngCompressionPreset png_compression;
 } RenderOptions;
 
 static inline RenderOptions render_options_default(void) {
@@ -24,6 +27,7 @@ static inline RenderOptions render_options_default(void) {
         .trim = 0,
         .trim_padding = 0,
         .alpha_threshold = 1,
+        .png_compression = PNG_COMPRESSION_BALANCED,
     };
     return options;
 }

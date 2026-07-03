@@ -69,6 +69,23 @@ static int parse_trim_mode(const char* value, RenderTrimMode* trim_mode) {
     return -1;
 }
 
+static int parse_compression(const char* value, PngCompressionPreset* preset) {
+    if (value == NULL || strcmp(value, "balanced") == 0) {
+        *preset = PNG_COMPRESSION_BALANCED;
+        return 0;
+    }
+    if (strcmp(value, "fast") == 0) {
+        *preset = PNG_COMPRESSION_FAST;
+        return 0;
+    }
+    if (strcmp(value, "small") == 0) {
+        *preset = PNG_COMPRESSION_SMALL;
+        return 0;
+    }
+    ZF_LOGE("Invalid compression preset: %s", value);
+    return -1;
+}
+
 static void print_argtable_help(const char* progname, void** argtable) {
     printf("Usage: %s", progname);
     arg_print_syntax(stdout, argtable, "\n\n");
@@ -129,7 +146,9 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
         if (read_render_options(args.size, args.width, args.height, args.scale, args.trim,
                                 args.trim_padding, args.alpha_threshold, &options->render) != 0 ||
             parse_trim_mode(args.trim_mode->count > 0 ? args.trim_mode->sval[0] : NULL,
-                            &options->trim_mode) != 0) {
+                            &options->trim_mode) != 0 ||
+            parse_compression(args.compression->count > 0 ? args.compression->sval[0] : NULL,
+                              &options->render.png_compression) != 0) {
             errors = 1;
         }
         if (options->trim_mode != RENDER_TRIM_NONE) {

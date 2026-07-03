@@ -48,13 +48,15 @@ DumpArgs cli_dump_args(void) {
                                     "minimum alpha counted as visible"),
         .trim_mode = arg_str0(NULL, "trim-mode", "<none|frame|animation>",
                               "animation crop behavior"),
+        .compression = arg_str0(NULL, "compression", "<fast|balanced|small>",
+                                "png compression preset (default balanced)"),
         .end = arg_end(16),
     };
-    void* table[] = {args.help,      args.input,        args.output,          args.stills,
-                     args.animation, args.start,        args.end_time,        args.fps,
-                     args.size,      args.width,        args.height,          args.scale,
-                     args.trim,      args.trim_padding, args.alpha_threshold, args.trim_mode,
-                     args.end};
+    void* table[] = {args.help,        args.input,        args.output,          args.stills,
+                     args.animation,   args.start,        args.end_time,        args.fps,
+                     args.size,        args.width,        args.height,          args.scale,
+                     args.trim,        args.trim_padding, args.alpha_threshold, args.trim_mode,
+                     args.compression, args.end};
     COPY_ARRAY(args.table, table);
     return args;
 }

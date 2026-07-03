@@ -27,6 +27,11 @@ typedef struct {
     int channels;
 } LoadedPage;
 
+struct CpuAtlasPages {
+    LoadedPage* items;
+    int count;
+};
+
 static void free_pages(LoadedPage* pages, int count) {
     for (int i = 0; i < count; i++) {
         free(pages[i].name);
@@ -87,7 +92,30 @@ static int load_pages(spAtlas* atlas,
     return 0;
 }
 
-static LoadedPage* find_page(LoadedPage* pages, int count, const char* name) {
+CpuAtlasPages* cpu_atlas_pages_load(spAtlas* atlas, const char* atlas_dir) {
+    if (atlas == NULL) {
+        return NULL;
+    }
+    CpuAtlasPages* cache = calloc(1, sizeof(*cache));
+    if (cache == NULL) {
+        return NULL;
+    }
+    if (load_pages(atlas, atlas_dir, &cache->items, &cache->count) != 0) {
+        free(cache);
+        return NULL;
+    }
+    return cache;
+}
+
+void cpu_atlas_pages_free(CpuAtlasPages* pages) {
+    if (pages == NULL) {
+        return;
+    }
+    free_pages(pages->items, pages->count);
+    free(pages);
+}
+
+static const LoadedPage* find_page(const LoadedPage* pages, int count, const char* name) {
     for (int i = 0; i < count; i++) {
         if (strcmp(pages[i].name, name) == 0) {
             return &pages[i];
@@ -169,10 +197,19 @@ int cpu_renderer_render_image(const CpuRenderRequest* request, RgbaImage* out) {
         return -1;
     }
 
-    LoadedPage* pages = NULL;
+    CpuAtlasPages* owned_pages = NULL;
+    const LoadedPage* pages = NULL;
     int page_count = 0;
-    if (load_pages(atlas, atlas_dir, &pages, &page_count) != 0) {
-        return -1;
+    if (request->pages != NULL) {
+        pages = request->pages->items;
+        page_count = request->pages->count;
+    } else {
+        owned_pages = cpu_atlas_pages_load(atlas, atlas_dir);
+        if (owned_pages == NULL) {
+            return -1;
+        }
+        pages = owned_pages->items;
+        page_count = owned_pages->count;
     }
 
     spine_compat_skeleton_update_world_transform(skeleton);
@@ -229,7 +266,7 @@ int cpu_renderer_render_image(const CpuRenderRequest* request, RgbaImage* out) {
 
     if (!has_bounds) {
         ZF_LOGE("no region or mesh attachments to render");
-        free_pages(pages, page_count);
+        cpu_atlas_pages_free(owned_pages);
         return -1;
     }
 
@@ -247,14 +284,14 @@ int cpu_renderer_render_image(const CpuRenderRequest* request, RgbaImage* out) {
         .height = height,
     };
     if (canvas.pixels == NULL) {
-        free_pages(pages, page_count);
+        cpu_atlas_pages_free(owned_pages);
         return -1;
     }
 
     spSkeletonClipping* clipper = spSkeletonClipping_create();
     if (clipper == NULL) {
         rgba_image_free(&canvas);
-        free_pages(pages, page_count);
+        cpu_atlas_pages_free(owned_pages);
         return -1;
     }
 
@@ -289,7 +326,7 @@ int cpu_renderer_render_image(const CpuRenderRequest* request, RgbaImage* out) {
             region = spine_compat_mesh_atlas_region((spMeshAttachment*)attachment);
         }
 
-        LoadedPage* page = find_page(pages, page_count, region->page->name);
+        const LoadedPage* page = find_page(pages, page_count, region->page->name);
         if (page == NULL) {
             continue;
         }
@@ -358,7 +395,7 @@ int cpu_renderer_render_image(const CpuRenderRequest* request, RgbaImage* out) {
     spSkeletonClipping_clipEnd2(clipper);
 
     spSkeletonClipping_dispose(clipper);
-    free_pages(pages, page_count);
+    cpu_atlas_pages_free(owned_pages);
 
     *out = canvas;
     return 0;
@@ -377,8 +414,11 @@ int cpu_renderer_render_png(const CpuRenderPngRequest* request) {
     RgbaImage cropped = {};
     const RgbaImage* output = render_canvas_select_output(&canvas, request->render.options,
                                                           request->forced_crop, &cropped);
+    PngEncodeOptions encode_options = png_encode_options_for(
+        request->render.options->png_compression);
     int png_error = image_encode_png32_file(request->output_path, output->pixels,
-                                            (unsigned)output->width, (unsigned)output->height);
+                                            (unsigned)output->width, (unsigned)output->height,
+                                            &encode_options);
 
     rgba_image_free(&cropped);
     rgba_image_free(&canvas);

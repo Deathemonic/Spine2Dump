@@ -7,11 +7,17 @@
 #include "render_canvas.h"
 #include "render_options.h"
 
+typedef struct CpuAtlasPages CpuAtlasPages;
+
+CpuAtlasPages* cpu_atlas_pages_load(spAtlas* atlas, const char* atlas_dir);
+void cpu_atlas_pages_free(CpuAtlasPages* pages);
+
 typedef struct CpuRenderRequest {
     spSkeleton* skeleton;
     spAtlas* atlas;
     const char* atlas_dir;
     const RenderOptions* options;
+    const CpuAtlasPages* pages;
 } CpuRenderRequest;
 
 typedef struct CpuRenderPngRequest {
