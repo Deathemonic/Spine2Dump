@@ -112,25 +112,6 @@ CliParseResult cli_parse_one_dir_command(int argc, char** argv, const char** inp
     return parse_result_from_errors(errors);
 }
 
-CliParseResult cli_parse_dump_expressions_command(int argc,
-                                                  char** argv,
-                                                  DumpExpressionsOptions* options) {
-    DumpExpressionsArgs args = cli_dump_expressions_args();
-    int errors = parse_or_print_help(argc, argv, args.table, args.help, args.end);
-    if (errors == 0) {
-        *options = (DumpExpressionsOptions){
-            .input_dir = args.input->filename[0],
-            .output_dir = args.output->filename[0],
-        };
-        if (read_render_options(args.size, args.width, args.height, args.scale, args.trim,
-                                args.trim_padding, args.alpha_threshold, &options->render) != 0) {
-            errors = 1;
-        }
-    }
-    arg_freetable(args.table, ARRAY_LEN(args.table));
-    return parse_result_from_errors(errors);
-}
-
 CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* options) {
     DumpArgs args = cli_dump_args();
     int errors = parse_or_print_help(argc, argv, args.table, args.help, args.end);
@@ -143,7 +124,7 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
             .end_seconds = args.end_time->count > 0 ? args.end_time->dval[0] : -1.0,
             .fps = args.fps->count > 0 ? args.fps->dval[0] : 30.0,
             .trim_mode = RENDER_TRIM_NONE,
-            .dry_run = args.dry_run->count > 0,
+            .stills = args.stills->count > 0,
         };
         if (read_render_options(args.size, args.width, args.height, args.scale, args.trim,
                                 args.trim_padding, args.alpha_threshold, &options->render) != 0 ||

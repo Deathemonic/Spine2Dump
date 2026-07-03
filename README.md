@@ -5,9 +5,9 @@ Supports Spine `3.5`, `3.6`, `3.7`, `3.8`, `4.0`, `4.1`, and `4.2`.
 
 ## Usage
 
-List and validate the assets in a folder
+Inspect a folder: list and validate the assets, print skeleton info, animations, and expression candidates
 ```shell
-spine2dump scan ./samples
+spine2dump inspect ./samples
 ```
 
 Dump sampled animation frames as numbered PNGs
@@ -18,26 +18,17 @@ spine2dump dump ./samples -o ./dump --animation idle --start 0 --end 2 --fps 30
 ### Examples
 
 ```shell
-# Recursively scan a folder and validate its atlas PNG pages
-spine2dump scan ./assets
-
-# Print skeleton info and list every animation
+# Scan + validate atlas pages + print skeleton info, animations, and expression candidates
 spine2dump inspect ./assets
-
-# List the detected expression attachment candidates
-spine2dump expressions ./assets
-
-# Render one full-pose PNG per detected expression
-spine2dump dump-expressions ./assets -o ./dump/expressions
 
 # Dump 2 seconds of the idle animation at 30 fps
 spine2dump dump ./assets -o ./dump --animation idle --start 0 --end 2 --fps 30
 
+# Render one still per expression attachment instead of animation frames
+spine2dump dump ./assets -o ./dump/expressions --stills
+
 # Crop all frames of an animation to one shared box with 8px padding
 spine2dump dump ./assets -o ./dump --animation idle --trim-mode animation --trim-padding 8
-
-# Validate the inputs without writing any images
-spine2dump dump ./assets -o ./dump --animation idle --dry-run
 
 # Render onto a 1024x1024 canvas with an extra 1.5x scale
 spine2dump dump ./assets -o ./dump --size 1024 --scale 1.5
@@ -53,14 +44,11 @@ Animation export writes one output folder per animation, containing numbered PNG
 
 ### `spine2dump --help`
 
-| Command             | Description                                          |
-|---------------------|------------------------------------------------------|
-| `scan`              | Recursively scan a folder and validate atlas pages   |
-| `inspect`           | Print skeleton info and list animations              |
-| `expressions`       | List detected expression attachment candidates       |
-| `dump-expressions`  | Render one full-pose PNG per expression candidate    |
-| `dump`              | Dump sampled animation frames                        |
-| `--help`            | Print help                                           |
+| Command             | Description                                                      |
+|---------------------|-----------------------------------------------------------------|
+| `inspect`           | Scan + validate atlas pages, print skeleton info, animations, and expression candidates |
+| `dump`              | Dump animation frames, or one still per expression (`--stills`) |
+| `--help`            | Print help                                                      |
 
 ---
 
@@ -68,7 +56,8 @@ Animation export writes one output folder per animation, containing numbered PNG
 
 | Option                        | Description                                   | Default             |
 |-------------------------------|-----------------------------------------------|---------------------|
-| `-o`, `--output <output-dir>` | Output directory for the dumped frames        |                     |
+| `-o`, `--output <output-dir>` | Output directory for the dumped images        |                     |
+| `--stills`                    | Render one still per expression attachment instead of animation frames | |
 | `--animation <name>`          | Animation name to dump                        |                     |
 | `--start <seconds>`           | Start time in seconds                         | `0`                 |
 | `--end <seconds>`             | End time in seconds                           |                     |
@@ -81,39 +70,24 @@ Animation export writes one output folder per animation, containing numbered PNG
 | `--trim-mode <mode>`          | Animation crop behavior                       | `none`, `frame`, `animation` |
 | `--trim-padding <px>`         | Padding kept around trimmed bounds            | `0`                 |
 | `--alpha-threshold <0-255>`   | Minimum alpha counted as visible              |                     |
-| `--dry-run`                   | Validate only, write nothing                  |                     |
 | `--help`                      | Print help                                    |                     |
 
----
-
-### `spine2dump dump-expressions <asset-dir> --help`
-
-| Option                        | Description                               | Default |
-|-------------------------------|-------------------------------------------|---------|
-| `-o`, `--output <output-dir>` | Output directory for the dumped images    |         |
-| `--size <px>`                 | Square output canvas size                 |         |
-| `--width <px>`                | Output canvas width                       |         |
-| `--height <px>`               | Output canvas height                      |         |
-| `--scale <value>`             | Render scale multiplier                   | `1.0`   |
-| `--trim`                      | Crop transparent borders                  |         |
-| `--trim-padding <px>`         | Padding kept around trimmed bounds        | `0`     |
-| `--alpha-threshold <0-255>`   | Minimum alpha counted as visible          |         |
-| `--help`                      | Print help                                |         |
+The animation/time options (`--animation`, `--start`, `--end`, `--fps`, `--trim-mode`) are ignored in `--stills` mode.
 
 </details>
 
 ## Expressions
 
-Spine does not have one universal "expression" asset type. Depending on the rig, expressions may be separate animations, skins, slots, or attachment variants. The included sample stores expressions as attachments on the `00_Default` slot, with `00_Eyeclose` as a separate eye-close attachment.
+Spine does not have one universal "expression" asset type. Depending on the rig, expressions may be separate animations, skins, slots, or attachment variants. The included sample stores expressions as attachments on the `00_Default` slot (`01_nomal`, `02_respond`, `03_smile`, ...), with `00_Eyeclose` as a separate eye-close attachment.
 
-List the detected expression candidates
+List the detected expression candidates (part of `inspect`)
 ```shell
-spine2dump expressions ./samples
+spine2dump inspect ./samples
 ```
 
-Render one full-pose PNG per detected expression candidate
+Render one still per detected expression candidate
 ```shell
-spine2dump dump-expressions ./samples -o ./dump/expressions
+spine2dump dump ./samples -o ./dump/expressions --stills
 ```
 
 The CPU renderer supports region attachments, mesh attachments, clipping attachments, slot/attachment tint, and normal/additive/multiply/screen blend modes. Two-color tint-black data is currently rendered as regular tint.

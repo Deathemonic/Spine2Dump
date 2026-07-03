@@ -256,7 +256,7 @@ int spine_backend_inspect(const char* skel_path, const char* atlas_path) {
         ZF_LOGI("  %s %.3fs", animation->name, animation->duration);
     }
 
-    ZF_LOGI("Skins / expression candidates");
+    ZF_LOGI("Skins candidates");
     if (data->skinsCount == 0) {
         ZF_LOGI("  <none>");
     }
