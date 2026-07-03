@@ -22,16 +22,14 @@ typedef struct SpineBackendVTable {
                            const SpineDumpOptions* options);
 } SpineBackendVTable;
 
-#define DECLARE_BACKEND(prefix)                                                     \
-    int prefix##_spine_backend_inspect(const char* skel_path, const char* atlas_path); \
-    int prefix##_spine_backend_list_expressions(const char* skel_path,              \
-                                                const char* atlas_path);            \
-    int prefix##_spine_backend_dump_expressions(                                    \
-        const char* skel_path, const char* atlas_path, const char* output_dir,      \
-        const SpineDumpExpressionsOptions* options);                                \
-    int prefix##_spine_backend_dump_animations(const char* skel_path,               \
-                                               const char* atlas_path,              \
-                                               const char* output_dir,              \
+#define DECLARE_BACKEND(prefix)                                                                    \
+    int prefix##_spine_backend_inspect(const char* skel_path, const char* atlas_path);             \
+    int prefix##_spine_backend_list_expressions(const char* skel_path, const char* atlas_path);    \
+    int prefix##_spine_backend_dump_expressions(const char* skel_path, const char* atlas_path,     \
+                                                const char* output_dir,                            \
+                                                const SpineDumpExpressionsOptions* options);       \
+    int prefix##_spine_backend_dump_animations(const char* skel_path, const char* atlas_path,      \
+                                               const char* output_dir,                             \
                                                const SpineDumpOptions* options)
 
 DECLARE_BACKEND(sp35);
@@ -42,24 +40,21 @@ DECLARE_BACKEND(sp40);
 DECLARE_BACKEND(sp41);
 DECLARE_BACKEND(sp42);
 
-#define BACKEND_ENTRY(runtime_text, major_value, minor_value, prefix) \
-    {                                                                 \
-        .runtime = runtime_text,                                      \
-        .major = major_value,                                         \
-        .minor = minor_value,                                         \
-        .inspect = prefix##_spine_backend_inspect,                    \
-        .list_expressions = prefix##_spine_backend_list_expressions,  \
-        .dump_expressions = prefix##_spine_backend_dump_expressions,  \
-        .dump_animations = prefix##_spine_backend_dump_animations,    \
+#define BACKEND_ENTRY(runtime_text, major_value, minor_value, prefix)                              \
+    {                                                                                              \
+        .runtime = runtime_text,                                                                   \
+        .major = major_value,                                                                      \
+        .minor = minor_value,                                                                      \
+        .inspect = prefix##_spine_backend_inspect,                                                 \
+        .list_expressions = prefix##_spine_backend_list_expressions,                               \
+        .dump_expressions = prefix##_spine_backend_dump_expressions,                               \
+        .dump_animations = prefix##_spine_backend_dump_animations,                                 \
     }
 
-static const SpineBackendVTable BACKENDS[] = {
-    BACKEND_ENTRY("3.5", 3, 5, sp35),
-    BACKEND_ENTRY("3.6", 3, 6, sp36),
-    BACKEND_ENTRY("3.7", 3, 7, sp37),
-    BACKEND_ENTRY("3.8", 3, 8, sp38),
-    BACKEND_ENTRY("4.0", 4, 0, sp40),
-    BACKEND_ENTRY("4.1", 4, 1, sp41),
+static const SpineBackendVTable backends[] = {
+    BACKEND_ENTRY("3.5", 3, 5, sp35), BACKEND_ENTRY("3.6", 3, 6, sp36),
+    BACKEND_ENTRY("3.7", 3, 7, sp37), BACKEND_ENTRY("3.8", 3, 8, sp38),
+    BACKEND_ENTRY("4.0", 4, 0, sp40), BACKEND_ENTRY("4.1", 4, 1, sp41),
     BACKEND_ENTRY("4.2", 4, 2, sp42),
 };
 
@@ -77,10 +72,10 @@ static const SpineBackendVTable* find_backend_for_skel(const char* skel_path) {
         return NULL;
     }
 
-    for (size_t i = 0; i < sizeof(BACKENDS) / sizeof(BACKENDS[0]); i++) {
-        if (BACKENDS[i].major == major && BACKENDS[i].minor == minor) {
-            ZF_LOGI("using Spine runtime %s for skeleton version %s", BACKENDS[i].runtime, version);
-            return &BACKENDS[i];
+    for (size_t i = 0; i < sizeof(backends) / sizeof(backends[0]); i++) {
+        if (backends[i].major == major && backends[i].minor == minor) {
+            ZF_LOGI("using Spine runtime %s for skeleton version %s", backends[i].runtime, version);
+            return &backends[i];
         }
     }
 

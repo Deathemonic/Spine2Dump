@@ -41,12 +41,12 @@ DumpExpressionsArgs cli_dump_expressions_args(void) {
         .scale = arg_dbl0(NULL, "scale", "<value>", "render scale multiplier"),
         .trim = arg_lit0(NULL, "trim", "crop transparent borders"),
         .trim_padding = arg_int0(NULL, "trim-padding", "<px>", "padding around trimmed bounds"),
-        .alpha_threshold =
-            arg_int0(NULL, "alpha-threshold", "<0-255>", "minimum alpha counted as visible"),
+        .alpha_threshold = arg_int0(NULL, "alpha-threshold", "<0-255>",
+                                    "minimum alpha counted as visible"),
         .end = arg_end(8),
     };
-    void* table[] = {args.help,         args.input,        args.output, args.size,
-                     args.width,        args.height,       args.scale,  args.trim,
+    void* table[] = {args.help,         args.input,           args.output, args.size,
+                     args.width,        args.height,          args.scale,  args.trim,
                      args.trim_padding, args.alpha_threshold, args.end};
     COPY_ARRAY(args.table, table);
     return args;
@@ -67,17 +67,18 @@ DumpArgs cli_dump_args(void) {
         .scale = arg_dbl0(NULL, "scale", "<value>", "render scale multiplier"),
         .trim = arg_lit0(NULL, "trim", "crop transparent borders"),
         .trim_padding = arg_int0(NULL, "trim-padding", "<px>", "padding around trimmed bounds"),
-        .alpha_threshold =
-            arg_int0(NULL, "alpha-threshold", "<0-255>", "minimum alpha counted as visible"),
-        .trim_mode =
-            arg_str0(NULL, "trim-mode", "<none|frame|animation>", "animation crop behavior"),
+        .alpha_threshold = arg_int0(NULL, "alpha-threshold", "<0-255>",
+                                    "minimum alpha counted as visible"),
+        .trim_mode = arg_str0(NULL, "trim-mode", "<none|frame|animation>",
+                              "animation crop behavior"),
         .dry_run = arg_lit0(NULL, "dry-run", "validate only"),
         .end = arg_end(16),
     };
-    void* table[] = {args.help,     args.input, args.output,  args.animation, args.start,
-                     args.end_time, args.fps,   args.size,    args.width,     args.height,
-                     args.scale,    args.trim,  args.trim_padding, args.alpha_threshold,
-                     args.trim_mode, args.dry_run, args.end};
+    void* table[] = {args.help,         args.input,           args.output,    args.animation,
+                     args.start,        args.end_time,        args.fps,       args.size,
+                     args.width,        args.height,          args.scale,     args.trim,
+                     args.trim_padding, args.alpha_threshold, args.trim_mode, args.dry_run,
+                     args.end};
     COPY_ARRAY(args.table, table);
     return args;
 }

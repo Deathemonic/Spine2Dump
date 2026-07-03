@@ -3,8 +3,8 @@
 
 #include <stddef.h>
 
-#include <spine/Atlas.h>
 #include <spine/Animation.h>
+#include <spine/Atlas.h>
 #include <spine/MeshAttachment.h>
 #include <spine/RegionAttachment.h>
 #include <spine/Skeleton.h>
@@ -19,8 +19,8 @@
     #define SPINE2DUMP_RUNTIME_MINOR 2
 #endif
 
-#define SPINE2DUMP_RUNTIME_AT_LEAST(major, minor) \
-    (SPINE2DUMP_RUNTIME_MAJOR > (major) ||        \
+#define SPINE2DUMP_RUNTIME_AT_LEAST(major, minor)                                                  \
+    (SPINE2DUMP_RUNTIME_MAJOR > (major) ||                                                         \
      (SPINE2DUMP_RUNTIME_MAJOR == (major) && SPINE2DUMP_RUNTIME_MINOR >= (minor)))
 
 typedef void (*SpineSkinEntryVisitor)(int slot_index,

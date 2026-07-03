@@ -99,9 +99,9 @@ RenderCropRect render_crop_union(RenderCropRect a, RenderCropRect b) {
 }
 
 int render_canvas_crop(const RgbaImage* source, RenderCropRect crop, RgbaImage* out) {
-    if (source == NULL || source->pixels == NULL || out == NULL || !crop.valid ||
-        crop.x < 0 || crop.y < 0 || crop.width <= 0 || crop.height <= 0 ||
-        crop.x + crop.width > source->width || crop.y + crop.height > source->height) {
+    if (source == NULL || source->pixels == NULL || out == NULL || !crop.valid || crop.x < 0 ||
+        crop.y < 0 || crop.width <= 0 || crop.height <= 0 || crop.x + crop.width > source->width ||
+        crop.y + crop.height > source->height) {
         return -1;
     }
 
@@ -111,8 +111,8 @@ int render_canvas_crop(const RgbaImage* source, RenderCropRect crop, RgbaImage* 
     }
 
     for (int y = 0; y < crop.height; y++) {
-        const unsigned char* src_row =
-            source->pixels + (((crop.y + y) * source->width + crop.x) * 4);
+        const unsigned char* src_row = source->pixels +
+                                       (((crop.y + y) * source->width + crop.x) * 4);
         unsigned char* dst_row = pixels + ((size_t)y * (size_t)crop.width * 4);
         memcpy(dst_row, src_row, (size_t)crop.width * 4);
     }

@@ -1,5 +1,3 @@
-#include "spine_backend.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +13,7 @@
 #include "cpu_renderer.h"
 #include "file.h"
 #include "path.h"
+#include "spine_backend.h"
 #include "spine_compat.h"
 
 void _spAtlasPage_createTexture(spAtlasPage* self, const char* path) {
@@ -163,8 +162,7 @@ static void list_expression(int slot_index,
         slot_name = context->data->slots[slot_index]->name;
     }
     if (slot_name_sounds_like_expression(slot_name)) {
-        ZF_LOGI("  skin=%s slot=%s attachment=%s", context->skin->name, slot_name,
-                attachment_name);
+        ZF_LOGI("  skin=%s slot=%s attachment=%s", context->skin->name, slot_name, attachment_name);
         context->count++;
     }
 }
@@ -213,11 +211,11 @@ static void dump_expression(int slot_index,
     CpuRenderPngRequest render_request = {
         .render =
             {
-                .skeleton = skeleton,
-                .atlas = context->atlas,
-                .atlas_dir = context->atlas_dir,
-                .options = &context->options->render,
-            },
+                     .skeleton = skeleton,
+                     .atlas = context->atlas,
+                     .atlas_dir = context->atlas_dir,
+                     .options = &context->options->render,
+                     },
         .output_path = output_path,
         .forced_crop = NULL,
     };
@@ -393,8 +391,9 @@ static int compute_animation_crop(spSkeletonData* data,
             return -1;
         }
 
-        RenderCropRect frame_crop = render_canvas_alpha_bounds(
-            &image, options->render.alpha_threshold, options->render.trim_padding);
+        RenderCropRect frame_crop = render_canvas_alpha_bounds(&image,
+                                                               options->render.alpha_threshold,
+                                                               options->render.trim_padding);
         crop = render_crop_union(crop, frame_crop);
         rgba_image_free(&image);
     }
@@ -466,17 +465,18 @@ static int dump_one_animation(spSkeletonData* data,
         char file_name[64];
         char output_path[1024];
         snprintf(file_name, sizeof(file_name), "frame_%05d.png", frame);
-        RenderCropRect* forced_crop =
-            options->trim_mode == RENDER_TRIM_ANIMATION && animation_crop.valid ? &animation_crop
-                                                                               : NULL;
+        RenderCropRect* forced_crop = options->trim_mode == RENDER_TRIM_ANIMATION &&
+                                              animation_crop.valid
+                                          ? &animation_crop
+                                          : NULL;
         CpuRenderPngRequest render_request = {
             .render =
                 {
-                    .skeleton = skeleton,
-                    .atlas = atlas,
-                    .atlas_dir = atlas_dir,
-                    .options = &options->render,
-                },
+                         .skeleton = skeleton,
+                         .atlas = atlas,
+                         .atlas_dir = atlas_dir,
+                         .options = &options->render,
+                         },
             .output_path = output_path,
             .forced_crop = forced_crop,
         };
