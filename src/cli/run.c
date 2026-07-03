@@ -7,6 +7,7 @@
 
 #include "asset_bundle.h"
 #include "common.h"
+#include "log.h"
 #include "parser.h"
 #include "spine_backend.h"
 
@@ -129,6 +130,8 @@ cleanup:
 }
 
 int cli_run(int argc, char** argv) {
+    log_setup();
+
     if (argc < 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
         cli_print_root_help();
         return argc < 2 ? 1 : 0;

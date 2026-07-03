@@ -24,6 +24,7 @@ set(COMMON_SOURCES
     src/render/image_io.c
     src/utils/asset_bundle.c
     src/utils/file.c
+    src/utils/log.c
     src/utils/path.c
 )
 
