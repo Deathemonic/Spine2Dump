@@ -1,0 +1,14 @@
+build/
+build-*/
+out/
+
+*.exe
+*.obj
+*.o
+*.pdb
+
+.cache/
+.vscode/
+.idea/
+
+samples/

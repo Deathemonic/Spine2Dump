@@ -1,0 +1,212 @@
+include(FetchContent)
+
+if(POLICY CMP0169)
+    cmake_policy(SET CMP0169 OLD)
+endif()
+
+function(spine2dump_prefix_header out_file prefix)
+    set(symbols
+        _spAtlasPage_createTexture
+        _spAtlasPage_disposeTexture
+        _spUtil_readFile
+        _clip
+        _Entry_create
+        _Entry_dispose
+        _FromEntry_create
+        _FromEntry_dispose
+        findIkConstraintIndex
+        findPathConstraintIndex
+        findTransformConstraintIndex
+        indexOf
+        readFloat
+        readString
+        _ToEntry_create
+        _ToEntry_dispose
+        spine_backend_dump_animations
+        spine_backend_dump_expressions
+        spine_backend_inspect
+        spine_backend_list_expressions
+        cpu_renderer_render_image
+        cpu_renderer_render_png
+    )
+
+    foreach(source IN LISTS ARGN)
+        file(READ "${source}" source_text)
+        string(REGEX MATCHALL "[A-Za-z_][A-Za-z0-9_ \t\r\n*/()]*[^A-Za-z0-9_](_?sp[A-Za-z0-9_]+|Json_[A-Za-z0-9_]+|_[A-Za-z]*Entry_[A-Za-z0-9_]+)[ \t\r\n]*\\(" matches "${source_text}")
+        foreach(match IN LISTS matches)
+            string(REGEX REPLACE ".*[^A-Za-z0-9_](_?sp[A-Za-z0-9_]+|Json_[A-Za-z0-9_]+|_[A-Za-z]*Entry_[A-Za-z0-9_]+)[ \t\r\n]*\\(" "\\1" symbol "${match}")
+            list(APPEND symbols "${symbol}")
+        endforeach()
+
+        string(REGEX MATCHALL "_SP_ARRAY_(DECLARE|IMPLEMENT)_TYPE[ \t\r\n]*\\([ \t\r\n]*[A-Za-z_][A-Za-z0-9_]*" array_matches "${source_text}")
+        foreach(match IN LISTS array_matches)
+            string(REGEX REPLACE ".*\\([ \t\r\n]*([A-Za-z_][A-Za-z0-9_]*)" "\\1" array_type "${match}")
+            list(APPEND symbols
+                "${array_type}_create"
+                "${array_type}_dispose"
+                "${array_type}_clear"
+                "${array_type}_setSize"
+                "${array_type}_ensureCapacity"
+                "${array_type}_add"
+                "${array_type}_addAll"
+                "${array_type}_addAllValues"
+                "${array_type}_removeAt"
+                "${array_type}_contains"
+                "${array_type}_pop"
+                "${array_type}_peek"
+            )
+        endforeach()
+    endforeach()
+    list(REMOVE_DUPLICATES symbols)
+
+    file(WRITE "${out_file}" "#ifndef SPINE2DUMP_PREFIX_${prefix}_H\n#define SPINE2DUMP_PREFIX_${prefix}_H\n")
+    foreach(symbol IN LISTS symbols)
+        file(APPEND "${out_file}" "#define ${symbol} ${prefix}_${symbol}\n")
+    endforeach()
+    file(APPEND "${out_file}" "#endif\n")
+endfunction()
+
+foreach(spine_version IN LISTS SPINE2DUMP_SPINE_VERSIONS)
+    string(REPLACE "." "_" spine_target_suffix "${spine_version}")
+    FetchContent_Declare(spine_runtimes_${spine_target_suffix}
+        GIT_REPOSITORY https://github.com/EsotericSoftware/spine-runtimes.git
+        GIT_TAG ${spine_version}
+        UPDATE_DISCONNECTED TRUE
+    )
+    FetchContent_GetProperties(spine_runtimes_${spine_target_suffix})
+    if(NOT spine_runtimes_${spine_target_suffix}_POPULATED)
+        FetchContent_Populate(spine_runtimes_${spine_target_suffix})
+    endif()
+endforeach()
+
+function(spine2dump_add_embedded_runtime spine_version)
+    string(REPLACE "." "_" spine_target_suffix "${spine_version}")
+    string(REPLACE "." ";" spine_version_parts "${spine_version}")
+    list(GET spine_version_parts 0 spine_version_major)
+    list(GET spine_version_parts 1 spine_version_minor)
+    set(prefix "sp${spine_version_major}${spine_version_minor}")
+    set(runtime_name "spine-runtime-${spine_target_suffix}")
+    set(app_name "spine-app-${spine_target_suffix}")
+    set(prefix_header "${CMAKE_CURRENT_BINARY_DIR}/generated/spine_prefix_${spine_target_suffix}.h")
+    set(spine_runtime_source_dir "${spine_runtimes_${spine_target_suffix}_SOURCE_DIR}/spine-c/spine-c")
+    file(GLOB spine_runtime_sources CONFIGURE_DEPENDS
+        "${spine_runtime_source_dir}/src/spine/*.c"
+    )
+    file(GLOB spine_runtime_headers CONFIGURE_DEPENDS
+        "${spine_runtime_source_dir}/include/spine/*.h"
+    )
+    spine2dump_prefix_header("${prefix_header}" "${prefix}" ${spine_runtime_sources} ${spine_runtime_headers})
+
+    add_library(${runtime_name} OBJECT ${spine_runtime_sources})
+    target_include_directories(${runtime_name} PRIVATE
+        "${spine_runtime_source_dir}/include"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    )
+    target_compile_options(${runtime_name} PRIVATE
+        -include "${prefix_header}"
+        -Wno-deprecated-declarations
+        -Wno-implicit-const-int-float-conversion
+    )
+
+    add_library(${app_name} OBJECT ${SPINE2DUMP_VERSIONED_APP_SOURCES})
+    target_include_directories(${app_name} PRIVATE
+        ${SPINE2DUMP_INCLUDE_DIRS}
+        "${spine_runtime_source_dir}/include"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        ${zf_log_src_SOURCE_DIR}
+        ${spng_src_SOURCE_DIR}/spng
+    )
+    spine2dump_enable_project_warnings(${app_name})
+    spine2dump_enable_clang_tidy(${app_name})
+    target_compile_options(${app_name} PRIVATE -include "${prefix_header}")
+    target_compile_definitions(${app_name} PRIVATE
+        SPINE2DUMP_RUNTIME_VERSION="${spine_version}"
+        SPINE2DUMP_RUNTIME_MAJOR=${spine_version_major}
+        SPINE2DUMP_RUNTIME_MINOR=${spine_version_minor}
+    )
+
+    target_sources(spine2dump PRIVATE
+        $<TARGET_OBJECTS:${runtime_name}>
+        $<TARGET_OBJECTS:${app_name}>
+    )
+endfunction()
+
+FetchContent_Declare(argtable3_src
+    GIT_REPOSITORY https://github.com/argtable/argtable3.git
+    GIT_TAG master
+    SOURCE_SUBDIR cmake-no-upstream
+    UPDATE_DISCONNECTED TRUE
+)
+FetchContent_MakeAvailable(argtable3_src)
+add_library(argtable3 STATIC
+    ${argtable3_src_SOURCE_DIR}/src/argtable3.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_cmd.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_date.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_dbl.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_dstr.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_end.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_file.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_getopt_long.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_hashtable.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_int.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_lit.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_rem.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_rex.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_str.c
+    ${argtable3_src_SOURCE_DIR}/src/arg_utils.c
+)
+target_include_directories(argtable3 PUBLIC
+    ${argtable3_src_SOURCE_DIR}/src
+)
+target_compile_definitions(argtable3 PUBLIC
+    ARG_REPLACE_GETOPT=1
+    REPLACE_GETOPT
+)
+
+FetchContent_Declare(zf_log_src
+    GIT_REPOSITORY https://github.com/wonder-mice/zf_log.git
+    GIT_TAG master
+    SOURCE_SUBDIR cmake-no-upstream
+    UPDATE_DISCONNECTED TRUE
+)
+FetchContent_MakeAvailable(zf_log_src)
+add_library(zf_log STATIC
+    ${zf_log_src_SOURCE_DIR}/zf_log/zf_log.c
+)
+target_include_directories(zf_log PUBLIC
+    ${zf_log_src_SOURCE_DIR}
+)
+
+FetchContent_Declare(zlib_src
+    GIT_REPOSITORY https://github.com/madler/zlib.git
+    GIT_TAG v1.3.1
+    UPDATE_DISCONNECTED TRUE
+)
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "Build zlib examples" FORCE)
+FetchContent_MakeAvailable(zlib_src)
+if(NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB ALIAS zlibstatic)
+endif()
+
+set(SPNG_SHARED OFF CACHE BOOL "Build shared libspng" FORCE)
+set(SPNG_STATIC ON CACHE BOOL "Build static libspng" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "Build libspng examples" FORCE)
+FetchContent_Declare(spng_src
+    GIT_REPOSITORY https://github.com/randy408/libspng.git
+    GIT_TAG v0.7.4
+    SOURCE_SUBDIR cmake-no-upstream
+    UPDATE_DISCONNECTED TRUE
+)
+FetchContent_MakeAvailable(spng_src)
+add_library(spng_static STATIC
+    ${spng_src_SOURCE_DIR}/spng/spng.c
+)
+target_compile_definitions(spng_static PUBLIC
+    SPNG_STATIC
+)
+target_include_directories(spng_static PUBLIC
+    ${spng_src_SOURCE_DIR}/spng
+)
+target_link_libraries(spng_static PRIVATE
+    ZLIB::ZLIB
+)

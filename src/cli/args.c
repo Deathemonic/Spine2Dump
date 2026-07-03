@@ -1,0 +1,83 @@
+#include "args.h"
+
+#include "common.h"
+
+RootArgs cli_root_args(void) {
+    RootArgs args = {
+        .help = arg_lit0("h", "help", "display this help and exit"),
+        .command = arg_rem("<command> [options]", "command to run"),
+        .scan = arg_rem(NULL, "scan <asset-dir>"),
+        .inspect = arg_rem(NULL, "inspect <asset-dir>"),
+        .expressions = arg_rem(NULL, "expressions <asset-dir>"),
+        .dump_expressions = arg_rem(NULL, "dump-expressions <asset-dir> -o <output-dir>"),
+        .dump = arg_rem(NULL, "dump <asset-dir> -o <output-dir> [options]"),
+        .end = arg_end(1),
+    };
+    void* table[] = {args.help,        args.command,          args.scan, args.inspect,
+                     args.expressions, args.dump_expressions, args.dump, args.end};
+    COPY_ARRAY(args.table, table);
+    return args;
+}
+
+OneDirArgs cli_one_dir_args(void) {
+    OneDirArgs args = {
+        .help = arg_lit0("h", "help", "display this help and exit"),
+        .input = arg_file1(NULL, NULL, "<asset-dir>", "asset directory"),
+        .end = arg_end(8),
+    };
+    void* table[] = {args.help, args.input, args.end};
+    COPY_ARRAY(args.table, table);
+    return args;
+}
+
+DumpExpressionsArgs cli_dump_expressions_args(void) {
+    DumpExpressionsArgs args = {
+        .help = arg_lit0("h", "help", "display this help and exit"),
+        .input = arg_file1(NULL, NULL, "<asset-dir>", "asset directory"),
+        .output = arg_file1("o", "output", "<output-dir>", "output directory"),
+        .size = arg_int0(NULL, "size", "<px>", "square output canvas size"),
+        .width = arg_int0(NULL, "width", "<px>", "output canvas width"),
+        .height = arg_int0(NULL, "height", "<px>", "output canvas height"),
+        .scale = arg_dbl0(NULL, "scale", "<value>", "render scale multiplier"),
+        .trim = arg_lit0(NULL, "trim", "crop transparent borders"),
+        .trim_padding = arg_int0(NULL, "trim-padding", "<px>", "padding around trimmed bounds"),
+        .alpha_threshold =
+            arg_int0(NULL, "alpha-threshold", "<0-255>", "minimum alpha counted as visible"),
+        .end = arg_end(8),
+    };
+    void* table[] = {args.help,         args.input,        args.output, args.size,
+                     args.width,        args.height,       args.scale,  args.trim,
+                     args.trim_padding, args.alpha_threshold, args.end};
+    COPY_ARRAY(args.table, table);
+    return args;
+}
+
+DumpArgs cli_dump_args(void) {
+    DumpArgs args = {
+        .help = arg_lit0("h", "help", "display this help and exit"),
+        .input = arg_file1(NULL, NULL, "<asset-dir>", "asset directory"),
+        .output = arg_file1("o", "output", "<output-dir>", "output directory"),
+        .animation = arg_str0(NULL, "animation", "<name>", "animation name"),
+        .start = arg_dbl0(NULL, "start", "<seconds>", "start seconds"),
+        .end_time = arg_dbl0(NULL, "end", "<seconds>", "end seconds"),
+        .fps = arg_dbl0(NULL, "fps", "<value>", "frames per second"),
+        .size = arg_int0(NULL, "size", "<px>", "square output canvas size"),
+        .width = arg_int0(NULL, "width", "<px>", "output canvas width"),
+        .height = arg_int0(NULL, "height", "<px>", "output canvas height"),
+        .scale = arg_dbl0(NULL, "scale", "<value>", "render scale multiplier"),
+        .trim = arg_lit0(NULL, "trim", "crop transparent borders"),
+        .trim_padding = arg_int0(NULL, "trim-padding", "<px>", "padding around trimmed bounds"),
+        .alpha_threshold =
+            arg_int0(NULL, "alpha-threshold", "<0-255>", "minimum alpha counted as visible"),
+        .trim_mode =
+            arg_str0(NULL, "trim-mode", "<none|frame|animation>", "animation crop behavior"),
+        .dry_run = arg_lit0(NULL, "dry-run", "validate only"),
+        .end = arg_end(16),
+    };
+    void* table[] = {args.help,     args.input, args.output,  args.animation, args.start,
+                     args.end_time, args.fps,   args.size,    args.width,     args.height,
+                     args.scale,    args.trim,  args.trim_padding, args.alpha_threshold,
+                     args.trim_mode, args.dry_run, args.end};
+    COPY_ARRAY(args.table, table);
+    return args;
+}
