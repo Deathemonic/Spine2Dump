@@ -8,13 +8,9 @@ IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ContinuationIndentWidth: 4
-AccessModifierOffset: -4
 IndentCaseLabels: true
 IndentPPDirectives: BeforeHash
-IndentExternBlock: NoIndent
-IndentRequiresClause: true
 IndentWrappedFunctionNames: false
-NamespaceIndentation: None
 
 # Line Length
 ColumnLimit: 100
@@ -31,7 +27,6 @@ AlignOperands: Align
 AlignTrailingComments: true
 DerivePointerAlignment: false
 PointerAlignment: Left
-ReferenceAlignment: Left
 
 # Breaking
 AllowAllArgumentsOnNextLine: true
@@ -41,17 +36,12 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortEnumsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: Never
-AllowShortLambdasOnASingleLine: Inline
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
-AlwaysBreakTemplateDeclarations: Yes
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Attach
-BreakBeforeConceptDeclarations: Always
 BreakBeforeTernaryOperators: true
-BreakConstructorInitializers: BeforeColon
-BreakInheritanceList: BeforeColon
 BreakStringLiterals: true
 
 # Bin packing
@@ -61,40 +51,29 @@ BinPackParameters: false
 # Braces
 BraceWrapping:
   AfterCaseLabel: false
-  AfterClass: false
   AfterControlStatement: Never
   AfterEnum: false
   AfterFunction: false
-  AfterNamespace: false
   AfterStruct: false
   AfterUnion: false
   AfterExternBlock: false
-  BeforeCatch: false
   BeforeElse: false
-  BeforeLambdaBody: false
   BeforeWhile: false
   IndentBraces: false
   SplitEmptyFunction: false
   SplitEmptyRecord: false
-  SplitEmptyNamespace: false
 
 # Spacing
 SpaceAfterCStyleCast: false
 SpaceAfterLogicalNot: false
-SpaceAfterTemplateKeyword: true
 SpaceAroundPointerQualifiers: Default
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
-SpaceBeforeCpp11BracedList: false
-SpaceBeforeCtorInitializerColon: true
-SpaceBeforeInheritanceColon: true
 SpaceBeforeParens: ControlStatements
-SpaceBeforeRangeBasedForLoopColon: true
 SpaceBeforeSquareBrackets: false
 SpaceInEmptyBlock: false
 SpaceInEmptyParentheses: false
 SpacesBeforeTrailingComments: 2
-SpacesInAngles: Never
 SpacesInConditionalStatement: false
 SpacesInContainerLiterals: false
 SpacesInCStyleCastParentheses: false
@@ -111,20 +90,14 @@ IncludeCategories:
   # C system headers
   - Regex: '^<(assert|complex|ctype|errno|fenv|float|inttypes|limits|locale|math|setjmp|signal|stdarg|stddef|stdint|stdio|stdlib|string|time|uchar|wchar|wctype)\.h>$'
     Priority: 1
-  # C++ standard library headers
-  - Regex: '^<(algorithm|any|array|atomic|barrier|bit|bitset|charconv|chrono|codecvt|compare|complex|concepts|condition_variable|coroutine|deque|exception|execution|expected|filesystem|format|forward_list|fstream|functional|future|initializer_list|iomanip|ios|iosfwd|iostream|istream|iterator|latch|limits|list|locale|map|mdspan|memory|memory_resource|mutex|new|numbers|numeric|optional|ostream|print|queue|random|ranges|ratio|regex|scoped_allocator|semaphore|set|shared_mutex|source_location|span|spanstream|sstream|stack|stacktrace|stdexcept|stop_token|streambuf|string|string_view|strstream|syncstream|system_error|thread|tuple|type_traits|typeindex|typeinfo|unordered_map|unordered_set|utility|valarray|variant|vector|version)>$'
-    Priority: 2
-  # C standard library headers (C++ style)
-  - Regex: '^<c(assert|complex|ctype|errno|fenv|float|inttypes|limits|locale|math|setjmp|signal|stdarg|stddef|stdint|stdio|stdlib|string|time|uchar|wchar|wctype)>$'
-    Priority: 3
   # Other system headers
   - Regex: '^<.*\.h>$'
-    Priority: 4
+    Priority: 2
   - Regex: '^<.*>$'
-    Priority: 5
+    Priority: 3
   # Project headers
   - Regex: '^".*"$'
-    Priority: 6
+    Priority: 4
 
 # Penalties for breaking (lower = preferred)
 PenaltyBreakAssignment: 100
@@ -133,31 +106,20 @@ PenaltyBreakComment: 300
 PenaltyBreakFirstLessLess: 120
 PenaltyBreakOpenParenthesis: 0
 PenaltyBreakString: 1000
-PenaltyBreakTemplateDeclaration: 10
 PenaltyExcessCharacter: 1000000
 PenaltyIndentedWhitespace: 0
 PenaltyReturnTypeOnItsOwnLine: 200
 
 # Other options
-ConstructorInitializerIndentWidth: 4
-Cpp11BracedListStyle: true
-EmptyLineAfterAccessModifier: Never
-EmptyLineBeforeAccessModifier: LogicalBlock
-FixNamespaceComments: true
 IncludeIsMainRegex: '([-_](test|unittest))?$'
 IncludeIsMainSourceRegex: ''
 InsertBraces: false
 InsertNewlineAtEOF: true
 KeepEmptyLinesAtTheStartOfBlocks: false
-LambdaBodyIndentation: Signature
 MaxEmptyLinesToKeep: 1
-PackConstructorInitializers: CurrentLine
 QualifierAlignment: Leave
 ReflowComments: true
-RemoveBracesLLVM: false
 SeparateDefinitionBlocks: Leave
-ShortNamespaceLines: 0
-SortUsingDeclarations: true
 
 # Macro handling
 AttributeMacros: []

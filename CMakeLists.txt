@@ -8,6 +8,7 @@ include(FetchContent)
 
 include(CompilerSettings)
 include(ProjectOptions)
+include(Formatting)
 include(StaticAnalysis)
 include(Dependencies)
 include(Sources)

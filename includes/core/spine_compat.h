@@ -19,9 +19,8 @@
     #define RUNTIME_MINOR 2
 #endif
 
-#define RUNTIME_AT_LEAST(major, minor)                                                  \
-    (RUNTIME_MAJOR > (major) ||                                                         \
-     (RUNTIME_MAJOR == (major) && RUNTIME_MINOR >= (minor)))
+#define RUNTIME_AT_LEAST(major, minor)                                                             \
+    (RUNTIME_MAJOR > (major) || (RUNTIME_MAJOR == (major) && RUNTIME_MINOR >= (minor)))
 
 typedef void (*SpineSkinEntryVisitor)(int slot_index,
                                       const char* attachment_name,
