@@ -5,39 +5,42 @@ Supports Spine `3.5`, `3.6`, `3.7`, `3.8`, `4.0`, `4.1`, and `4.2`.
 
 ## Usage
 
-Inspect a folder: list and validate the assets, print skeleton info, animations, and expression candidates
 ```shell
-spine2dump inspect ./samples
-```
+# Input should always be a directory containing .skel, .atlas, and .png
 
-Dump sampled animation frames as numbered PNGs
-```shell
-spine2dump dump ./samples -o ./dump --animation idle --start 0 --end 2 --fps 30
-```
-
-### Examples
-
-```shell
-# Scan + validate atlas pages + print skeleton info, animations, and expression candidates
+# Inspect a folder: list and validate the assets, print skeleton info, animations, and expression candidates
 spine2dump inspect ./assets
 
+# Dump spine animation frames as numbered PNGs
+spine2dump dump ./assets -o ./output --animation idle --start 0 --end 2 --fps 30
+
 # Dump 2 seconds of the idle animation at 30 fps
-spine2dump dump ./assets -o ./dump --animation idle --start 0 --end 2 --fps 30
+spine2dump dump ./assets -o ./output --animation idle --start 0 --end 2 --fps 30
 
 # Render one still per expression attachment instead of animation frames
-spine2dump dump ./assets -o ./dump/expressions --stills
+spine2dump dump ./assets -o ./output --stills
 
 # Crop all frames of an animation to one shared box with 8px padding
-spine2dump dump ./assets -o ./dump --animation idle --trim-mode animation --trim-padding 8
+spine2dump dump ./assets -o ./output --animation idle --trim-mode animation --trim-padding 8
 
 # Render onto a 1024x1024 canvas with an extra 1.5x scale
-spine2dump dump ./assets -o ./dump --size 1024 --scale 1.5
+spine2dump dump ./assets -o ./output --size 1024 --scale 1.5
 
 # Render onto a non-square canvas and crop transparent borders
-spine2dump dump ./assets -o ./dump --width 1280 --height 720 --trim
+spine2dump dump ./assets -o ./output --width 1280 --height 720 --trim
 ```
 
-Animation export writes one output folder per animation, containing numbered PNG frames. Video export can be added later by piping those frames to FFmpeg.
+## Expressions
+
+Spine does not have one universal "expression" asset type. Depending on the rig, expressions may be separate animations, skins, slots, or attachment variants. The included sample stores expressions as attachments on the `00_Default` slot (`01_nomal`, `02_respond`, `03_smile`, ...).
+
+```shell
+# List the detected expression candidates (part of `inspect`)
+spine2dump inspect ./assets
+
+# Render one still per detected expression candidate
+spine2dump dump ./assets -o ./output --stills
+```
 
 <details>
   <summary>Command Line</summary>
@@ -75,22 +78,6 @@ Animation export writes one output folder per animation, containing numbered PNG
 The animation/time options (`--animation`, `--start`, `--end`, `--fps`, `--trim-mode`) are ignored in `--stills` mode.
 
 </details>
-
-## Expressions
-
-Spine does not have one universal "expression" asset type. Depending on the rig, expressions may be separate animations, skins, slots, or attachment variants. The included sample stores expressions as attachments on the `00_Default` slot (`01_nomal`, `02_respond`, `03_smile`, ...), with `00_Eyeclose` as a separate eye-close attachment.
-
-List the detected expression candidates (part of `inspect`)
-```shell
-spine2dump inspect ./samples
-```
-
-Render one still per detected expression candidate
-```shell
-spine2dump dump ./samples -o ./dump/expressions --stills
-```
-
-The CPU renderer supports region attachments, mesh attachments, clipping attachments, slot/attachment tint, and normal/additive/multiply/screen blend modes. Two-color tint-black data is currently rendered as regular tint.
 
 ## Building
 
