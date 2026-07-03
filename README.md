@@ -4,7 +4,7 @@ Turn jumbled **Spine2D** rips into their correct sprites.
 Supports Spine `3.5`, `3.6`, `3.7`, `3.8`, `4.0`, `4.1`, and `4.2`.
 
 <div>
-  <img src=".github/resources/explain_sprite.png" width="502" alt="preview">
+  <img src=".github/resources/explain_sprite.png" width="1024" alt="preview">
 </div>
 
 
