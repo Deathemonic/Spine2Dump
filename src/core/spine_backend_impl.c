@@ -236,7 +236,7 @@ int spine_backend_inspect(const char* skel_path, const char* atlas_path) {
         return -1;
     }
 
-    ZF_LOGI("spine-c %s load result", SPINE2DUMP_RUNTIME_VERSION);
+    ZF_LOGI("spine-c %s load result", RUNTIME_VERSION);
     ZF_LOGI("  skeleton:   %s", skel_path);
     ZF_LOGI("  atlas:      %s", atlas_path);
     ZF_LOGI("  version:    %s", data->version == NULL ? "<unknown>" : data->version);

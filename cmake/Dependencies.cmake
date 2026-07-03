@@ -4,7 +4,7 @@ if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
 endif()
 
-function(spine2dump_prefix_header out_file prefix)
+function(prefix_header out_file prefix)
     set(symbols
         _spAtlasPage_createTexture
         _spAtlasPage_disposeTexture
@@ -66,7 +66,7 @@ function(spine2dump_prefix_header out_file prefix)
     file(APPEND "${out_file}" "#endif\n")
 endfunction()
 
-foreach(spine_version IN LISTS SPINE2DUMP_SPINE_VERSIONS)
+foreach(spine_version IN LISTS SPINE_VERSIONS)
     string(REPLACE "." "_" spine_target_suffix "${spine_version}")
     FetchContent_Declare(spine_runtimes_${spine_target_suffix}
         GIT_REPOSITORY https://github.com/EsotericSoftware/spine-runtimes.git
@@ -79,7 +79,7 @@ foreach(spine_version IN LISTS SPINE2DUMP_SPINE_VERSIONS)
     endif()
 endforeach()
 
-function(spine2dump_add_embedded_runtime spine_version)
+function(add_embedded_runtime spine_version)
     string(REPLACE "." "_" spine_target_suffix "${spine_version}")
     string(REPLACE "." ";" spine_version_parts "${spine_version}")
     list(GET spine_version_parts 0 spine_version_major)
@@ -95,7 +95,7 @@ function(spine2dump_add_embedded_runtime spine_version)
     file(GLOB spine_runtime_headers CONFIGURE_DEPENDS
         "${spine_runtime_source_dir}/include/spine/*.h"
     )
-    spine2dump_prefix_header("${prefix_header}" "${prefix}" ${spine_runtime_sources} ${spine_runtime_headers})
+    prefix_header("${prefix_header}" "${prefix}" ${spine_runtime_sources} ${spine_runtime_headers})
 
     add_library(${runtime_name} OBJECT ${spine_runtime_sources})
     target_include_directories(${runtime_name} PRIVATE
@@ -108,21 +108,21 @@ function(spine2dump_add_embedded_runtime spine_version)
         -Wno-implicit-const-int-float-conversion
     )
 
-    add_library(${app_name} OBJECT ${SPINE2DUMP_VERSIONED_APP_SOURCES})
+    add_library(${app_name} OBJECT ${VERSIONED_APP_SOURCES})
     target_include_directories(${app_name} PRIVATE
-        ${SPINE2DUMP_INCLUDE_DIRS}
+        ${INCLUDE_DIRS}
         "${spine_runtime_source_dir}/include"
         "${CMAKE_CURRENT_BINARY_DIR}/generated"
         ${zf_log_src_SOURCE_DIR}
         ${spng_src_SOURCE_DIR}/spng
     )
-    spine2dump_enable_project_warnings(${app_name})
-    spine2dump_enable_clang_tidy(${app_name})
+    enable_project_warnings(${app_name})
+    enable_clang_tidy(${app_name})
     target_compile_options(${app_name} PRIVATE -include "${prefix_header}")
     target_compile_definitions(${app_name} PRIVATE
-        SPINE2DUMP_RUNTIME_VERSION="${spine_version}"
-        SPINE2DUMP_RUNTIME_MAJOR=${spine_version_major}
-        SPINE2DUMP_RUNTIME_MINOR=${spine_version_minor}
+        RUNTIME_VERSION="${spine_version}"
+        RUNTIME_MAJOR=${spine_version_major}
+        RUNTIME_MINOR=${spine_version_minor}
     )
 
     target_sources(spine2dump PRIVATE

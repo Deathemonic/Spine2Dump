@@ -1,6 +1,6 @@
 # User-facing build options and cache variables for Spine2Dump.
 
-set(SPINE2DUMP_SPINE_VERSIONS
+set(SPINE_VERSIONS
     "3.5;3.6;3.7;3.8;4.0;4.1;4.2"
     CACHE STRING "Semicolon-separated Spine runtime branches to embed"
 )
