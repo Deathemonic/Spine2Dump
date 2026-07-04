@@ -1,44 +1,10 @@
 #include "image_io.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 
 #include <spng.h>
 
 #include "file.h"
-
-static int read_file(const char* filename, unsigned char** data, size_t* size) {
-    FILE* file = file_open(filename, "rb");
-    if (file == NULL) {
-        return -1;
-    }
-    if (fseek(file, 0, SEEK_END) != 0) {
-        fclose(file);
-        return -1;
-    }
-    long length = ftell(file);
-    if (length < 0) {
-        fclose(file);
-        return -1;
-    }
-    rewind(file);
-
-    unsigned char* bytes = malloc((size_t)length);
-    if (bytes == NULL && length > 0) {
-        fclose(file);
-        return -1;
-    }
-    size_t read = fread(bytes, 1, (size_t)length, file);
-    fclose(file);
-    if (read != (size_t)length) {
-        free(bytes);
-        return -1;
-    }
-
-    *data = bytes;
-    *size = (size_t)length;
-    return 0;
-}
 
 PngEncodeOptions png_encode_options_for(PngCompressionPreset preset) {
     switch (preset) {
@@ -59,9 +25,9 @@ int image_decode_png32_file(unsigned char** out,
                             unsigned* width,
                             unsigned* height,
                             const char* filename) {
-    unsigned char* file_data = NULL;
+    void* file_data = NULL;
     size_t file_size = 0;
-    if (read_file(filename, &file_data, &file_size) != 0) {
+    if (file_read_all(filename, &file_data, &file_size) != 0) {
         return -1;
     }
 
@@ -145,15 +111,8 @@ int image_encode_png32_file(const char* filename,
     }
 
     if (error == 0) {
-        FILE* file = file_open(filename, "wb");
-        if (file == NULL) {
+        if (file_write_all(filename, png, png_size) != 0) {
             error = -1;
-        } else {
-            size_t written = fwrite(png, 1, png_size, file);
-            fclose(file);
-            if (written != png_size) {
-                error = -1;
-            }
         }
     }
 

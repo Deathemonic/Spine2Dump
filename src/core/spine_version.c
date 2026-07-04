@@ -133,34 +133,15 @@ static int read_int_hash_version(const unsigned char* data,
 }
 
 int spine_version_detect_file(const char* skel_path, char* version, size_t version_size) {
-    FILE* file = file_open(skel_path, "rb");
-    if (file == NULL) {
+    void* contents = NULL;
+    size_t size = 0;
+    if (file_read_all(skel_path, &contents, &size) != 0 || size == 0) {
         ZF_LOGE("could not open skeleton: %s", skel_path);
+        free(contents);
         return -1;
     }
-
-    if (fseek(file, 0, SEEK_END) != 0) {
-        fclose(file);
-        return -1;
-    }
-    long file_size = ftell(file);
-    if (file_size <= 0) {
-        fclose(file);
-        return -1;
-    }
-    rewind(file);
-
-    unsigned char* data = malloc((size_t)file_size);
-    if (data == NULL) {
-        fclose(file);
-        return -1;
-    }
-    size_t read = fread(data, 1, (size_t)file_size, file);
-    fclose(file);
-    if (read != (size_t)file_size) {
-        free(data);
-        return -1;
-    }
+    unsigned char* data = contents;
+    long file_size = (long)size;
 
     int major = 0;
     int minor = 0;

@@ -26,37 +26,12 @@ void _spAtlasPage_disposeTexture(spAtlasPage* self) {
 }
 
 char* _spUtil_readFile(const char* path, int* length) {
-    FILE* file = file_open(path, "rb");
-    if (file == NULL) {
+    void* data = NULL;
+    size_t size = 0;
+    if (file_read_all(path, &data, &size) != 0) {
         ZF_LOGE("failed to read file: %s", path);
         return NULL;
     }
-
-    if (fseek(file, 0, SEEK_END) != 0) {
-        fclose(file);
-        return NULL;
-    }
-
-    long size = ftell(file);
-    if (size < 0) {
-        fclose(file);
-        return NULL;
-    }
-    rewind(file);
-
-    char* data = malloc((size_t)size);
-    if (data == NULL && size > 0) {
-        fclose(file);
-        return NULL;
-    }
-
-    size_t read = fread(data, 1, (size_t)size, file);
-    fclose(file);
-    if (read != (size_t)size) {
-        free(data);
-        return NULL;
-    }
-
     *length = (int)size;
     return data;
 }

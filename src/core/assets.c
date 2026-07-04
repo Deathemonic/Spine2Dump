@@ -1,23 +1,15 @@
 #include "assets.h"
 
 #include <ctype.h>
-#include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/stat.h>
+#include <uv.h>
 #include <zf_log/zf_log.h>
 
 #include "file.h"
 #include "path.h"
-
-#if defined(_WIN32)
-    #define WIN32_LEAN_AND_MEAN
-    #include <windows.h>
-#else
-    #include <dirent.h>
-    #include <sys/stat.h>
-#endif
 
 static char* copy_string(const char* source) {
     size_t length = strlen(source);
@@ -74,112 +66,67 @@ static int ends_with_ignore_case(const char* path, const char* suffix) {
     return 1;
 }
 
+static int scan_entry(const char* child,
+                      int is_dir,
+                      StringList* skel_files,
+                      StringList* atlas_files,
+                      StringList* png_files) {
+    if (is_dir) {
+        return scan_assets(child, skel_files, atlas_files, png_files);
+    }
+    if (ends_with_ignore_case(child, ".skel")) {
+        return string_list_push(skel_files, child);
+    }
+    if (ends_with_ignore_case(child, ".atlas")) {
+        return string_list_push(atlas_files, child);
+    }
+    if (ends_with_ignore_case(child, ".png")) {
+        return string_list_push(png_files, child);
+    }
+    return 0;
+}
+
 int scan_assets(const char* root,
                 StringList* skel_files,
                 StringList* atlas_files,
                 StringList* png_files) {
-#if defined(_WIN32)
-    char pattern[MAX_PATH];
-    if (path_join(root, "*", pattern, sizeof(pattern)) != 0) {
-        ZF_LOGE("path is too long: %s", root);
-        return -1;
-    }
-
-    WIN32_FIND_DATAA data;
-    HANDLE handle = FindFirstFileA(pattern, &data);
-    if (handle == INVALID_HANDLE_VALUE) {
+    uv_fs_t req;
+    if (uv_fs_scandir(NULL, &req, root, 0, NULL) < 0) {
         ZF_LOGE("could not read directory: %s", root);
+        uv_fs_req_cleanup(&req);
         return -1;
     }
 
-    do {
-        if (strcmp(data.cFileName, ".") == 0 || strcmp(data.cFileName, "..") == 0) {
-            continue;
-        }
-
-        char child[MAX_PATH];
-        if (path_join(root, data.cFileName, child, sizeof(child)) != 0) {
-            ZF_LOGE("path is too long under: %s", root);
-            FindClose(handle);
-            return -1;
-        }
-
-        if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
-            if (scan_assets(child, skel_files, atlas_files, png_files) != 0) {
-                FindClose(handle);
-                return -1;
-            }
-        } else if (ends_with_ignore_case(child, ".skel")) {
-            if (string_list_push(skel_files, child) != 0) {
-                FindClose(handle);
-                return -1;
-            }
-        } else if (ends_with_ignore_case(child, ".atlas")) {
-            if (string_list_push(atlas_files, child) != 0) {
-                FindClose(handle);
-                return -1;
-            }
-        } else if (ends_with_ignore_case(child, ".png")) {
-            if (string_list_push(png_files, child) != 0) {
-                FindClose(handle);
-                return -1;
-            }
-        }
-    } while (FindNextFileA(handle, &data) != 0);
-
-    FindClose(handle);
-    return 0;
-#else
-    DIR* dir = opendir(root);
-    if (dir == NULL) {
-        ZF_LOGE("could not read directory '%s': %s", root, strerror(errno));
-        return -1;
-    }
-
-    struct dirent* entry;
-    while ((entry = readdir(dir)) != NULL) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-
+    int result = 0;
+    uv_dirent_t entry;
+    while (result == 0 && uv_fs_scandir_next(&req, &entry) != UV_EOF) {
         char child[4096];
-        if (path_join(root, entry->d_name, child, sizeof(child)) != 0) {
+        if (path_join(root, entry.name, child, sizeof(child)) != 0) {
             ZF_LOGE("path is too long under: %s", root);
-            closedir(dir);
-            return -1;
+            result = -1;
+            break;
         }
 
-        struct stat stat_buffer;
-        if (stat(child, &stat_buffer) != 0) {
-            continue;
+        int is_dir;
+        if (entry.type == UV_DIRENT_DIR) {
+            is_dir = 1;
+        } else if (entry.type == UV_DIRENT_FILE) {
+            is_dir = 0;
+        } else {
+            uv_fs_t stat_req;
+            if (uv_fs_stat(NULL, &stat_req, child, NULL) != 0) {
+                uv_fs_req_cleanup(&stat_req);
+                continue;
+            }
+            is_dir = (stat_req.statbuf.st_mode & S_IFMT) == S_IFDIR;
+            uv_fs_req_cleanup(&stat_req);
         }
 
-        if (S_ISDIR(stat_buffer.st_mode)) {
-            if (scan_assets(child, skel_files, atlas_files, png_files) != 0) {
-                closedir(dir);
-                return -1;
-            }
-        } else if (ends_with_ignore_case(child, ".skel")) {
-            if (string_list_push(skel_files, child) != 0) {
-                closedir(dir);
-                return -1;
-            }
-        } else if (ends_with_ignore_case(child, ".atlas")) {
-            if (string_list_push(atlas_files, child) != 0) {
-                closedir(dir);
-                return -1;
-            }
-        } else if (ends_with_ignore_case(child, ".png")) {
-            if (string_list_push(png_files, child) != 0) {
-                closedir(dir);
-                return -1;
-            }
-        }
+        result = scan_entry(child, is_dir, skel_files, atlas_files, png_files);
     }
 
-    closedir(dir);
-    return 0;
-#endif
+    uv_fs_req_cleanup(&req);
+    return result;
 }
 
 static char* trim_line(char* line) {
@@ -218,14 +165,31 @@ int validate_atlas_pages(const StringList* atlas_files,
     *stats = (AtlasPageStats){0};
 
     for (size_t i = 0; i < atlas_files->count; i++) {
-        FILE* file = file_open(atlas_files->items[i], "r");
-        if (file == NULL) {
+        void* contents = NULL;
+        size_t size = 0;
+        if (file_read_all(atlas_files->items[i], &contents, &size) != 0) {
             ZF_LOGE("could not open atlas: %s", atlas_files->items[i]);
             return -1;
         }
 
-        char line[4096];
-        while (fgets(line, sizeof(line), file) != NULL) {
+        char* text = realloc(contents, size + 1);
+        if (text == NULL) {
+            free(contents);
+            return -1;
+        }
+        text[size] = '\0';
+
+        char* cursor = text;
+        while (cursor < text + size) {
+            char* line = cursor;
+            char* newline = strchr(cursor, '\n');
+            if (newline != NULL) {
+                *newline = '\0';
+                cursor = newline + 1;
+            } else {
+                cursor = text + size;
+            }
+
             char* trimmed = trim_line(line);
             if (!atlas_line_is_page_name(trimmed)) {
                 continue;
@@ -240,7 +204,7 @@ int validate_atlas_pages(const StringList* atlas_files,
             }
         }
 
-        fclose(file);
+        free(text);
     }
 
     return stats->missing == 0 ? 0 : -1;

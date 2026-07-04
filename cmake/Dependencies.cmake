@@ -118,6 +118,9 @@ function(add_embedded_runtime spine_version)
         ${zf_log_src_SOURCE_DIR}
         ${spng_src_SOURCE_DIR}/spng
     )
+    target_include_directories(${app_name} SYSTEM PRIVATE
+        ${libuv_src_SOURCE_DIR}/include
+    )
     enable_project_warnings(${app_name})
     enable_clang_tidy(${app_name})
     target_compile_options(${app_name} PRIVATE -include "${prefix_header}")
@@ -132,6 +135,20 @@ function(add_embedded_runtime spine_version)
         $<TARGET_OBJECTS:${app_name}>
     )
 endfunction()
+
+set(LIBUV_BUILD_SHARED OFF CACHE BOOL "Build shared libuv" FORCE)
+set(LIBUV_BUILD_TESTS OFF CACHE BOOL "Build libuv tests" FORCE)
+set(LIBUV_BUILD_BENCH OFF CACHE BOOL "Build libuv benchmarks" FORCE)
+FetchContent_Declare(libuv_src
+    GIT_REPOSITORY https://github.com/libuv/libuv.git
+    GIT_TAG v1.52.1
+    UPDATE_DISCONNECTED TRUE
+)
+FetchContent_MakeAvailable(libuv_src)
+if(TARGET uv_a)
+    get_target_property(libuv_includes uv_a INTERFACE_INCLUDE_DIRECTORIES)
+    set_target_properties(uv_a PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${libuv_includes}")
+endif()
 
 FetchContent_Declare(argtable3_src
     GIT_REPOSITORY https://github.com/argtable/argtable3.git
