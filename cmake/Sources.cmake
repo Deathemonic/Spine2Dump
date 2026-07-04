@@ -37,7 +37,7 @@ add_executable(spine2dump ${COMMON_SOURCES})
 target_include_directories(spine2dump PRIVATE ${INCLUDE_DIRS})
 enable_project_warnings(spine2dump)
 enable_clang_tidy(spine2dump)
-target_link_libraries(spine2dump PRIVATE argtable3 zf_log spng_static uv_a)
+target_link_libraries(spine2dump PRIVATE argtable3 zf_log spng_static uv_a OpenMP::OpenMP_C)
 
 foreach(spine_version IN LISTS SPINE_VERSIONS)
     add_embedded_runtime(${spine_version})

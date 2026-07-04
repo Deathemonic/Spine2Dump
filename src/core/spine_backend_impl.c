@@ -438,13 +438,19 @@ static int dump_one_animation(spSkeletonData* data,
         return -1;
     }
 
+    int failed = 0;
+#pragma omp parallel for schedule(dynamic)
     for (int frame = 0; frame < frame_count; frame++) {
+        if (failed) {
+            continue;
+        }
         double time = animation_frame_time(start, end, options->fps, frame);
 
         spSkeleton* skeleton = create_animation_skeleton(data, animation, time);
         if (skeleton == NULL) {
-            cpu_atlas_pages_free(pages);
-            return -1;
+#pragma omp atomic write
+            failed = 1;
+            continue;
         }
 
         char file_name[64];
@@ -468,16 +474,15 @@ static int dump_one_animation(spSkeletonData* data,
         };
         if (path_join(animation_dir, file_name, output_path, sizeof(output_path)) != 0 ||
             cpu_renderer_render_png(&render_request) != 0) {
-            spSkeleton_dispose(skeleton);
-            cpu_atlas_pages_free(pages);
-            return -1;
+#pragma omp atomic write
+            failed = 1;
         }
 
         spSkeleton_dispose(skeleton);
     }
 
     cpu_atlas_pages_free(pages);
-    return 0;
+    return failed ? -1 : 0;
 }
 
 int spine_backend_dump_animations(const char* skel_path,

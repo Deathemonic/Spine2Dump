@@ -4,6 +4,14 @@ if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
 endif()
 
+find_package(OpenMP QUIET COMPONENTS C)
+if(NOT TARGET OpenMP::OpenMP_C)
+    add_library(spine2dump_openmp INTERFACE)
+    target_compile_options(spine2dump_openmp INTERFACE -fopenmp)
+    target_link_options(spine2dump_openmp INTERFACE -fopenmp)
+    add_library(OpenMP::OpenMP_C ALIAS spine2dump_openmp)
+endif()
+
 function(prefix_header out_file prefix)
     set(symbols
         _spAtlasPage_createTexture
@@ -124,6 +132,7 @@ function(add_embedded_runtime spine_version)
     enable_project_warnings(${app_name})
     enable_clang_tidy(${app_name})
     target_compile_options(${app_name} PRIVATE -include "${prefix_header}")
+    target_link_libraries(${app_name} PRIVATE OpenMP::OpenMP_C)
     target_compile_definitions(${app_name} PRIVATE
         RUNTIME_VERSION="${spine_version}"
         RUNTIME_MAJOR=${spine_version_major}
