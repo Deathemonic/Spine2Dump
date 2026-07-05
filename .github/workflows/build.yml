@@ -31,7 +31,7 @@ jobs:
 
       - name: Install Ninja (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build clang nasm
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang nasm libomp-dev
 
       - name: Install Ninja (macOS)
         if: runner.os == 'macOS'
