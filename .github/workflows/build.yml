@@ -31,15 +31,19 @@ jobs:
 
       - name: Install Ninja (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build clang
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang nasm
 
       - name: Install Ninja (macOS)
         if: runner.os == 'macOS'
-        run: brew install ninja llvm
+        run: brew install ninja llvm nasm
 
       - name: Install Ninja (Windows)
         if: runner.os == 'Windows'
         uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Install nasm (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/setup-nasm@v1
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release
