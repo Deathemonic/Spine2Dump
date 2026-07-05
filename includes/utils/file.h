@@ -5,6 +5,5 @@
 
 int file_read_all(const char* path, void** data, size_t* size);
 int file_write_all(const char* path, const void* data, size_t size);
-int file_remove_tree(const char* path);
 
 #endif

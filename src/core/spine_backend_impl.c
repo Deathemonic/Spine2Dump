@@ -396,27 +396,7 @@ static int dump_one_animation(spSkeletonData* data,
                               const char* output_dir,
                               const SpineDumpOptions* options) {
     char safe_animation[128];
-    char frame_dir[1024];
     sanitize_filename(animation->name, safe_animation, sizeof(safe_animation));
-    if (options->output == RENDER_OUTPUT_IMAGE) {
-        if (path_join(output_dir, safe_animation, frame_dir, sizeof(frame_dir)) != 0) {
-            ZF_LOGE("animation output path is too long: %s", animation->name);
-            return -1;
-        }
-    } else {
-        char temp_name[192];
-        snprintf(temp_name, sizeof(temp_name), ".%s.frames.tmp", safe_animation);
-        if (path_join(output_dir, temp_name, frame_dir, sizeof(frame_dir)) != 0) {
-            ZF_LOGE("animation output path is too long: %s", animation->name);
-            return -1;
-        }
-        file_remove_tree(frame_dir);
-    }
-    if (frame_dir[0] == '\0') {
-        ZF_LOGE("animation output path is too long: %s", animation->name);
-        return -1;
-    }
-    path_make_dirs(frame_dir);
 
     double start = options->start_seconds;
     double end = options->end_seconds >= 0.0 ? options->end_seconds : animation->duration;
@@ -446,12 +426,89 @@ static int dump_one_animation(spSkeletonData* data,
     }
 
     RenderCropRect animation_crop = {};
-    if (options->trim_mode == RENDER_TRIM_ANIMATION &&
+    if ((options->trim_mode == RENDER_TRIM_ANIMATION ||
+         (options->output != RENDER_OUTPUT_IMAGE && options->render.trim)) &&
         compute_animation_crop(data, atlas, atlas_dir, pages, animation, options, start, end,
                                frame_count, &animation_crop) != 0) {
         cpu_atlas_pages_free(pages);
         return -1;
     }
+
+    if (options->output != RENDER_OUTPUT_IMAGE) {
+        char media_name[192];
+        char media_path[1024];
+        snprintf(media_name, sizeof(media_name), "%s.%s", safe_animation,
+                 media_output_extension(options->output));
+        if (path_join(output_dir, media_name, media_path, sizeof(media_path)) != 0) {
+            ZF_LOGE("media output path is too long: %s", animation->name);
+            cpu_atlas_pages_free(pages);
+            return -1;
+        }
+
+        MediaEncodeRequest encode_request = {
+            .output_path = media_path,
+            .fps = options->fps,
+            .output = options->output,
+            .codec = options->codec,
+        };
+        MediaEncoder* encoder = NULL;
+        int result = 0;
+        for (int frame = 0; frame < frame_count; frame++) {
+            double time = animation_frame_time(start, end, options->fps, frame);
+            spSkeleton* skeleton = create_animation_skeleton(data, animation, time);
+            if (skeleton == NULL) {
+                result = -1;
+                break;
+            }
+
+            CpuRenderRequest render_request = {
+                .skeleton = skeleton,
+                .atlas = atlas,
+                .atlas_dir = atlas_dir,
+                .options = &options->render,
+                .pages = pages,
+            };
+            RgbaImage image = {};
+            RgbaImage cropped = {};
+            result = cpu_renderer_render_image(&render_request, &image);
+            spSkeleton_dispose(skeleton);
+            if (result != 0) {
+                break;
+            }
+
+            RenderCropRect* forced_crop = animation_crop.valid ? &animation_crop : NULL;
+            const RgbaImage* output = render_canvas_select_output(&image, &options->render,
+                                                                  forced_crop, &cropped);
+            if (encoder == NULL) {
+                encoder = media_encoder_open(&encode_request, output->width, output->height);
+                if (encoder == NULL) {
+                    result = -1;
+                }
+            }
+            if (result == 0) {
+                result = media_encoder_write(encoder, output, frame);
+            }
+            rgba_image_free(&cropped);
+            rgba_image_free(&image);
+            if (result != 0) {
+                break;
+            }
+        }
+
+        if (encoder != NULL && media_encoder_close(encoder) != 0) {
+            result = -1;
+        }
+        cpu_atlas_pages_free(pages);
+        return result;
+    }
+
+    char frame_dir[1024];
+    if (path_join(output_dir, safe_animation, frame_dir, sizeof(frame_dir)) != 0) {
+        ZF_LOGE("animation output path is too long: %s", animation->name);
+        cpu_atlas_pages_free(pages);
+        return -1;
+    }
+    path_make_dirs(frame_dir);
 
     int failed = 0;
 #pragma omp parallel for schedule(dynamic)
@@ -498,37 +555,9 @@ static int dump_one_animation(spSkeletonData* data,
 
     cpu_atlas_pages_free(pages);
     if (failed) {
-        if (options->output != RENDER_OUTPUT_IMAGE) {
-            file_remove_tree(frame_dir);
-        }
         return -1;
     }
-    if (options->output == RENDER_OUTPUT_IMAGE) {
-        return 0;
-    }
-
-    char media_name[192];
-    char media_path[1024];
-    snprintf(media_name, sizeof(media_name), "%s.%s", safe_animation,
-             media_output_extension(options->output));
-    if (path_join(output_dir, media_name, media_path, sizeof(media_path)) != 0) {
-        ZF_LOGE("media output path is too long: %s", animation->name);
-        return -1;
-    }
-
-    MediaEncodeRequest encode_request = {
-        .frame_dir = frame_dir,
-        .output_path = media_path,
-        .fps = options->fps,
-        .frame_count = frame_count,
-        .output = options->output,
-        .codec = options->codec,
-    };
-    int encode_result = media_encode_frames(&encode_request);
-    if (file_remove_tree(frame_dir) != 0) {
-        ZF_LOGW("could not remove temporary frames: %s", frame_dir);
-    }
-    return encode_result;
+    return 0;
 }
 
 int spine_backend_dump_animations(const char* skel_path,

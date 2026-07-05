@@ -5,10 +5,6 @@
 
 #include <zf_log/zf_log.h>
 
-#include "image_io.h"
-#include "path.h"
-#include "render_canvas.h"
-
 #if defined(HAVE_FFMPEG)
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
@@ -31,14 +27,15 @@ const char* media_output_extension(RenderOutputKind output) {
 }
 
 #if defined(HAVE_FFMPEG)
-typedef struct EncoderState {
+struct MediaEncoder {
     AVFormatContext* format;
     AVCodecContext* codec;
     AVStream* stream;
     SwsContext* scale;
     AVFrame* frame;
     AVPacket* packet;
-} EncoderState;
+    unsigned char* rgba;
+};
 
 static enum AVCodecID codec_id_for(const MediaEncodeRequest* request) {
     if (request->output == RENDER_OUTPUT_GIF) {
@@ -62,13 +59,14 @@ static const AVCodec* find_encoder_for(const MediaEncodeRequest* request) {
 }
 
 static enum AVPixelFormat pixel_format_for(RenderOutputKind output) {
-    return output == RENDER_OUTPUT_GIF ? AV_PIX_FMT_PAL8 : AV_PIX_FMT_YUV420P;
+    return output == RENDER_OUTPUT_GIF ? AV_PIX_FMT_RGB8 : AV_PIX_FMT_YUV420P;
 }
 
-static void encoder_free(EncoderState* state) {
+static void encoder_free(MediaEncoder* state) {
     if (state == NULL) {
         return;
     }
+    free(state->rgba);
     sws_freeContext(state->scale);
     av_frame_free(&state->frame);
     av_packet_free(&state->packet);
@@ -79,9 +77,10 @@ static void encoder_free(EncoderState* state) {
         }
         avformat_free_context(state->format);
     }
+    free(state);
 }
 
-static int write_packet(EncoderState* state) {
+static int write_packet(MediaEncoder* state) {
     while (avcodec_receive_packet(state->codec, state->packet) == 0) {
         av_packet_rescale_ts(state->packet, state->codec->time_base, state->stream->time_base);
         state->packet->stream_index = state->stream->index;
@@ -94,34 +93,44 @@ static int write_packet(EncoderState* state) {
     return 0;
 }
 
-static int send_frame(EncoderState* state, AVFrame* frame) {
+static int send_frame(MediaEncoder* state, AVFrame* frame) {
     int result = avcodec_send_frame(state->codec, frame);
     return result < 0 ? result : write_packet(state);
 }
 
-static int open_encoder(const MediaEncodeRequest* request,
-                        int width,
-                        int height,
-                        EncoderState* state) {
+MediaEncoder* media_encoder_open(const MediaEncodeRequest* request, int width, int height) {
+    if (request == NULL || request->output == RENDER_OUTPUT_IMAGE || request->fps <= 0.0 ||
+        request->output_path == NULL || width <= 0 || height <= 0) {
+        return NULL;
+    }
+
     enum AVCodecID codec_id = codec_id_for(request);
     const AVCodec* codec = find_encoder_for(request);
     if (codec == NULL) {
         ZF_LOGE("FFmpeg encoder is unavailable for %s", media_output_extension(request->output));
-        return -1;
+        return NULL;
+    }
+
+    MediaEncoder* state = calloc(1, sizeof(*state));
+    if (state == NULL) {
+        return NULL;
     }
 
     int result = avformat_alloc_output_context2(&state->format, NULL, NULL, request->output_path);
     if (result < 0 || state->format == NULL) {
-        return -1;
+        encoder_free(state);
+        return NULL;
     }
 
     state->stream = avformat_new_stream(state->format, NULL);
     state->codec = avcodec_alloc_context3(codec);
     state->packet = av_packet_alloc();
     state->frame = av_frame_alloc();
+    state->rgba = malloc((size_t)width * (size_t)height * 4);
     if (state->stream == NULL || state->codec == NULL || state->packet == NULL ||
-        state->frame == NULL) {
-        return -1;
+        state->frame == NULL || state->rgba == NULL) {
+        encoder_free(state);
+        return NULL;
     }
 
     AVRational frame_rate = av_d2q(request->fps, 100000);
@@ -142,108 +151,103 @@ static int open_encoder(const MediaEncodeRequest* request,
 
     result = avcodec_open2(state->codec, codec, NULL);
     if (result < 0 || avcodec_parameters_from_context(state->stream->codecpar, state->codec) < 0) {
-        return -1;
+        encoder_free(state);
+        return NULL;
     }
 
     state->frame->format = state->codec->pix_fmt;
     state->frame->width = width;
     state->frame->height = height;
     if (av_frame_get_buffer(state->frame, 32) < 0) {
-        return -1;
+        encoder_free(state);
+        return NULL;
     }
 
     state->scale = sws_getContext(width, height, AV_PIX_FMT_RGBA, width, height,
                                   state->codec->pix_fmt, SWS_BILINEAR, NULL, NULL, NULL);
     if (state->scale == NULL) {
-        return -1;
+        encoder_free(state);
+        return NULL;
     }
 
     if (!(state->format->oformat->flags & AVFMT_NOFILE) &&
         avio_open(&state->format->pb, request->output_path, AVIO_FLAG_WRITE) < 0) {
-        return -1;
+        encoder_free(state);
+        return NULL;
     }
 
-    return avformat_write_header(state->format, NULL);
-}
-
-static int encode_png_frame(EncoderState* state, const char* path, int frame_index) {
-    RgbaImage image = {};
-    unsigned width = 0;
-    unsigned height = 0;
-    if (image_decode_png32_file(&image.pixels, &width, &height, path) != 0) {
-        return -1;
-    }
-    image.width = (int)width;
-    image.height = (int)height;
-
-    int result = av_frame_make_writable(state->frame);
-    if (result >= 0) {
-        const uint8_t* src_data[1] = {image.pixels};
-        int src_linesize[1] = {image.width * 4};
-        sws_scale(state->scale, src_data, src_linesize, 0, image.height, state->frame->data,
-                  state->frame->linesize);
-        state->frame->pts = frame_index;
-        result = send_frame(state, state->frame);
-    }
-
-    rgba_image_free(&image);
-    return result < 0 ? -1 : 0;
-}
-
-int media_encode_frames(const MediaEncodeRequest* request) {
-    if (request == NULL || request->output == RENDER_OUTPUT_IMAGE || request->fps <= 0.0 ||
-        request->frame_count <= 0 || request->frame_dir == NULL || request->output_path == NULL) {
-        return -1;
-    }
-
-    char first_frame[1024];
-    if (path_join(request->frame_dir, "frame_00000.png", first_frame, sizeof(first_frame)) != 0) {
-        return -1;
-    }
-
-    RgbaImage first = {};
-    unsigned width = 0;
-    unsigned height = 0;
-    if (image_decode_png32_file(&first.pixels, &width, &height, first_frame) != 0) {
-        return -1;
-    }
-    rgba_image_free(&first);
-
-    EncoderState state = {};
-    if (open_encoder(request, (int)width, (int)height, &state) != 0) {
-        encoder_free(&state);
-        ZF_LOGE("could not open FFmpeg encoder");
-        return -1;
+    if (avformat_write_header(state->format, NULL) < 0) {
+        encoder_free(state);
+        return NULL;
     }
 
     ZF_LOGI("encoding %s", request->output_path);
-    int result = 0;
-    for (int i = 0; i < request->frame_count; i++) {
-        char file_name[64];
-        char frame_path[1024];
-        snprintf(file_name, sizeof(file_name), "frame_%05d.png", i);
-        if (path_join(request->frame_dir, file_name, frame_path, sizeof(frame_path)) != 0 ||
-            encode_png_frame(&state, frame_path, i) != 0) {
-            result = -1;
-            break;
-        }
+    return state;
+}
+
+int media_encoder_write(MediaEncoder* encoder, const RgbaImage* image, int frame_index) {
+    if (encoder == NULL || image == NULL || image->pixels == NULL ||
+        image->width != encoder->codec->width || image->height != encoder->codec->height) {
+        return -1;
     }
 
-    if (result == 0 && send_frame(&state, NULL) == 0 && av_write_trailer(state.format) == 0) {
-        ZF_LOGI("wrote %s", request->output_path);
+    size_t pixel_count = (size_t)image->width * (size_t)image->height;
+    for (size_t i = 0; i < pixel_count; i++) {
+        const unsigned char* src = image->pixels + i * 4;
+        unsigned char* dst = encoder->rgba + i * 4;
+        unsigned alpha = src[3];
+        dst[0] = (unsigned char)((src[0] * alpha + 127) / 255);
+        dst[1] = (unsigned char)((src[1] * alpha + 127) / 255);
+        dst[2] = (unsigned char)((src[2] * alpha + 127) / 255);
+        dst[3] = 255;
+    }
+
+    int result = av_frame_make_writable(encoder->frame);
+    if (result < 0) {
+        return -1;
+    }
+
+    const uint8_t* src_data[1] = {encoder->rgba};
+    int src_linesize[1] = {image->width * 4};
+    sws_scale(encoder->scale, src_data, src_linesize, 0, image->height, encoder->frame->data,
+              encoder->frame->linesize);
+    encoder->frame->pts = frame_index;
+    return send_frame(encoder, encoder->frame) < 0 ? -1 : 0;
+}
+
+int media_encoder_close(MediaEncoder* encoder) {
+    if (encoder == NULL) {
+        return -1;
+    }
+
+    int result = send_frame(encoder, NULL) == 0 && av_write_trailer(encoder->format) == 0 ? 0 : -1;
+    if (result == 0) {
+        ZF_LOGI("wrote %s", encoder->format->url);
     } else {
-        result = -1;
-        ZF_LOGE("encode failed: %s", request->output_path);
+        ZF_LOGE("encode failed: %s", encoder->format->url);
     }
-
-    encoder_free(&state);
+    encoder_free(encoder);
     return result;
 }
 #else
-int media_encode_frames(const MediaEncodeRequest* request) {
+MediaEncoder* media_encoder_open(const MediaEncodeRequest* request, int width, int height) {
     (void)request;
+    (void)width;
+    (void)height;
     ZF_LOGE("FFmpeg support is disabled. Configure with ENABLE_FFMPEG=ON and FFMPEG_ROOT, or use "
             "FFMPEG_PROVIDER=external.");
+    return NULL;
+}
+
+int media_encoder_write(MediaEncoder* encoder, const RgbaImage* image, int frame_index) {
+    (void)encoder;
+    (void)image;
+    (void)frame_index;
+    return -1;
+}
+
+int media_encoder_close(MediaEncoder* encoder) {
+    (void)encoder;
     return -1;
 }
 #endif

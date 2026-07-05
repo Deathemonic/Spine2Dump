@@ -1,11 +1,8 @@
 #include "file.h"
 
 #include <stdlib.h>
-#include <string.h>
 
 #include <uv.h>
-
-#include "path.h"
 
 int file_read_all(const char* path, void** data, size_t* size) {
     uv_fs_t req;
@@ -81,46 +78,4 @@ int file_write_all(const char* path, const void* data, size_t size) {
     uv_fs_close(NULL, &req, fd, NULL);
     uv_fs_req_cleanup(&req);
     return 0;
-}
-
-int file_remove_tree(const char* path) {
-    uv_fs_t req;
-    int result = uv_fs_scandir(NULL, &req, path, 0, NULL);
-    if (result < 0) {
-        uv_fs_req_cleanup(&req);
-        return result == UV_ENOENT ? 0 : -1;
-    }
-
-    uv_dirent_t entry;
-    while (uv_fs_scandir_next(&req, &entry) == 0) {
-        if (strcmp(entry.name, ".") == 0 || strcmp(entry.name, "..") == 0) {
-            continue;
-        }
-
-        char child[1024];
-        if (path_join(path, entry.name, child, sizeof(child)) != 0) {
-            uv_fs_req_cleanup(&req);
-            return -1;
-        }
-
-        if (entry.type == UV_DIRENT_DIR) {
-            if (file_remove_tree(child) != 0) {
-                uv_fs_req_cleanup(&req);
-                return -1;
-            }
-        } else {
-            uv_fs_t unlink_req;
-            int unlink_result = uv_fs_unlink(NULL, &unlink_req, child, NULL);
-            uv_fs_req_cleanup(&unlink_req);
-            if (unlink_result < 0 && unlink_result != UV_ENOENT) {
-                uv_fs_req_cleanup(&req);
-                return -1;
-            }
-        }
-    }
-    uv_fs_req_cleanup(&req);
-
-    result = uv_fs_rmdir(NULL, &req, path, NULL);
-    uv_fs_req_cleanup(&req);
-    return result == 0 || result == UV_ENOENT ? 0 : -1;
 }
