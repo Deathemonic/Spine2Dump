@@ -24,6 +24,7 @@ set(COMMON_SOURCES
     src/render/image_io.c
     src/render/media_encoder.c
     src/utils/asset_bundle.c
+    src/utils/display.c
     src/utils/file.c
     src/utils/log.c
     src/utils/path.c
@@ -38,7 +39,7 @@ add_executable(spine2dump ${COMMON_SOURCES})
 target_include_directories(spine2dump PRIVATE ${INCLUDE_DIRS})
 enable_project_warnings(spine2dump)
 enable_clang_tidy(spine2dump)
-target_link_libraries(spine2dump PRIVATE argtable3 zf_log spng_static uv_a OpenMP::OpenMP_C)
+target_link_libraries(spine2dump PRIVATE argtable3 zf_log fort spng_static uv_a OpenMP::OpenMP_C)
 if(TARGET FFmpeg::FFmpeg)
     target_compile_definitions(spine2dump PRIVATE HAVE_FFMPEG=1)
     target_link_libraries(spine2dump PRIVATE FFmpeg::FFmpeg)

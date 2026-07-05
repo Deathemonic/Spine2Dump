@@ -11,6 +11,7 @@
 #include <zf_log/zf_log.h>
 
 #include "cpu_renderer.h"
+#include "display.h"
 #include "file.h"
 #include "media_encoder.h"
 #include "path.h"
@@ -39,13 +40,14 @@ char* _spUtil_readFile(const char* path, int* length) {
 
 typedef struct {
     const spSkeletonData* data;
+    DisplayTree* tree;
     int printed;
 } PrintSkinAttachmentsContext;
 
-static void print_skin_attachment(int slot_index,
-                                  const char* attachment_name,
-                                  spAttachment* attachment,
-                                  void* user) {
+static void collect_skin_attachment(int slot_index,
+                                    const char* attachment_name,
+                                    spAttachment* attachment,
+                                    void* user) {
     (void)attachment;
     PrintSkinAttachmentsContext* context = user;
     const char* slot_name = "<unknown-slot>";
@@ -53,19 +55,24 @@ static void print_skin_attachment(int slot_index,
         slot_name = context->data->slots[slot_index]->name;
     }
 
-    ZF_LOGI("      %s/%s", slot_name, attachment_name);
+    char line[512];
+    snprintf(line, sizeof(line), "%s/%s", slot_name, attachment_name);
+    display_tree_add(context->tree, 1, line);
     context->printed++;
 }
 
-static void print_skin_attachments(const spSkeletonData* data, const spSkin* skin) {
+static void collect_skin_attachments(const spSkeletonData* data,
+                                     const spSkin* skin,
+                                     DisplayTree* tree) {
     PrintSkinAttachmentsContext context = {
         .data = data,
+        .tree = tree,
         .printed = 0,
     };
-    spine_compat_visit_skin_entries(skin, print_skin_attachment, &context);
+    spine_compat_visit_skin_entries(skin, collect_skin_attachment, &context);
 
     if (context.printed == 0) {
-        ZF_LOGI("      <no attachments>");
+        display_tree_add(tree, 1, "<no attachments>");
     }
 }
 
@@ -124,6 +131,7 @@ static void sanitize_filename(const char* input, char* output, size_t output_siz
 typedef struct {
     const spSkeletonData* data;
     const spSkin* skin;
+    DisplayTable* table;
     int count;
 } ListExpressionsContext;
 
@@ -138,7 +146,7 @@ static void list_expression(int slot_index,
         slot_name = context->data->slots[slot_index]->name;
     }
     if (slot_name_sounds_like_expression(slot_name)) {
-        ZF_LOGI("  skin=%s slot=%s attachment=%s", context->skin->name, slot_name, attachment_name);
+        display_table_row(context->table, context->skin->name, slot_name, attachment_name, NULL);
         context->count++;
     }
 }
@@ -212,35 +220,47 @@ int spine_backend_inspect(const char* skel_path, const char* atlas_path) {
         return -1;
     }
 
-    ZF_LOGI("spine-c %s load result", RUNTIME_VERSION);
-    ZF_LOGI("  skeleton:   %s", skel_path);
-    ZF_LOGI("  atlas:      %s", atlas_path);
-    ZF_LOGI("  version:    %s", data->version == NULL ? "<unknown>" : data->version);
-    ZF_LOGI("  bounds:     %.2f %.2f %.2f %.2f", spine_compat_skeleton_data_x(data),
-            spine_compat_skeleton_data_y(data), data->width, data->height);
-    ZF_LOGI("  bones:      %d", data->bonesCount);
-    ZF_LOGI("  slots:      %d", data->slotsCount);
-    ZF_LOGI("  skins:      %d", data->skinsCount);
-    ZF_LOGI("  animations: %d", data->animationsCount);
+    char title[128];
+    snprintf(title, sizeof(title), "spine-c %s load result", RUNTIME_VERSION);
+    DisplayTable* kv = display_kv_create(title);
+    display_kv_row(kv, "skeleton", skel_path);
+    display_kv_row(kv, "atlas", atlas_path);
+    display_kv_row(kv, "version", data->version == NULL ? "<unknown>" : data->version);
+    display_kv_rowf(kv, "bounds", "%.2f %.2f %.2f %.2f", spine_compat_skeleton_data_x(data),
+                    spine_compat_skeleton_data_y(data), data->width, data->height);
+    display_kv_rowf(kv, "bones", "%d", data->bonesCount);
+    display_kv_rowf(kv, "slots", "%d", data->slotsCount);
+    display_kv_rowf(kv, "skins", "%d", data->skinsCount);
+    display_kv_rowf(kv, "animations", "%d", data->animationsCount);
+    display_kv_print(kv);
 
-    ZF_LOGI("Animations");
+    char anim_title[64];
+    snprintf(anim_title, sizeof(anim_title), "Animations (%d)", data->animationsCount);
+    DisplayTable* animations = display_table_create(anim_title);
+    display_table_header(animations, "name", "duration", NULL);
     if (data->animationsCount == 0) {
-        ZF_LOGI("  <none>");
+        display_table_row(animations, "<none>", "", NULL);
     }
     for (int i = 0; i < data->animationsCount; i++) {
         const spAnimation* animation = data->animations[i];
-        ZF_LOGI("  %s %.3fs", animation->name, animation->duration);
+        char duration[32];
+        snprintf(duration, sizeof(duration), "%.3fs", animation->duration);
+        display_table_row(animations, animation->name, duration, NULL);
     }
+    display_table_print(animations);
 
-    ZF_LOGI("Skins candidates");
+    char skins_title[64];
+    snprintf(skins_title, sizeof(skins_title), "Skins (%d)", data->skinsCount);
+    DisplayTree* skins = display_tree_create(skins_title);
     if (data->skinsCount == 0) {
-        ZF_LOGI("  <none>");
+        display_tree_add(skins, 0, "<none>");
     }
     for (int i = 0; i < data->skinsCount; i++) {
         const spSkin* skin = data->skins[i];
-        ZF_LOGI("  %s", skin->name);
-        print_skin_attachments(data, skin);
+        display_tree_add(skins, 0, skin->name);
+        collect_skin_attachments(data, skin, skins);
     }
+    display_tree_print(skins);
 
     spSkeletonData_dispose(data);
     spSkeletonBinary_dispose(binary);
@@ -256,10 +276,12 @@ int spine_backend_list_expressions(const char* skel_path, const char* atlas_path
         return -1;
     }
 
-    ZF_LOGI("Expression candidates");
+    DisplayTable* table = display_table_create("Expression candidates");
+    display_table_header(table, "skin", "slot", "attachment", NULL);
     ListExpressionsContext context = {
         .data = data,
         .skin = NULL,
+        .table = table,
         .count = 0,
     };
     for (int i = 0; i < data->skinsCount; i++) {
@@ -268,8 +290,9 @@ int spine_backend_list_expressions(const char* skel_path, const char* atlas_path
     }
 
     if (context.count == 0) {
-        ZF_LOGI("  <none detected by slot-name heuristic>");
+        display_table_row(table, "<none detected by slot-name heuristic>", "", "", NULL);
     }
+    display_table_print(table);
 
     spSkeletonData_dispose(data);
     spSkeletonBinary_dispose(binary);

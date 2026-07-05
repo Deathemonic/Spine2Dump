@@ -69,6 +69,9 @@ function(add_external_ffmpeg)
         --disable-postproc
         --disable-network
         --disable-everything
+        --disable-videotoolbox
+        --disable-audiotoolbox
+        --disable-iconv
         --enable-avcodec
         --enable-avformat
         --enable-avutil
@@ -327,6 +330,22 @@ add_library(zf_log STATIC
 )
 target_include_directories(zf_log PUBLIC
     ${zf_log_src_SOURCE_DIR}
+)
+
+FetchContent_Declare(libfort_src
+    GIT_REPOSITORY https://github.com/seleznevae/libfort.git
+    GIT_TAG v0.4.2
+    UPDATE_DISCONNECTED TRUE
+)
+FetchContent_GetProperties(libfort_src)
+if(NOT libfort_src_POPULATED)
+    FetchContent_Populate(libfort_src)
+endif()
+add_library(fort STATIC
+    ${libfort_src_SOURCE_DIR}/lib/fort.c
+)
+target_include_directories(fort PUBLIC
+    ${libfort_src_SOURCE_DIR}/lib
 )
 
 FetchContent_Declare(zlib_src
