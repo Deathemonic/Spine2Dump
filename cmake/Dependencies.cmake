@@ -1,7 +1,131 @@
 include(FetchContent)
+include(ExternalProject)
 
 if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
+endif()
+
+function(add_ffmpeg_imported_target)
+    if(TARGET FFmpeg::FFmpeg)
+        return()
+    endif()
+
+    add_library(FFmpeg::FFmpeg INTERFACE IMPORTED GLOBAL)
+    target_include_directories(FFmpeg::FFmpeg INTERFACE "${FFMPEG_INCLUDE_DIR}")
+    target_link_libraries(FFmpeg::FFmpeg INTERFACE
+        "${FFMPEG_AVFORMAT_LIBRARY}"
+        "${FFMPEG_AVCODEC_LIBRARY}"
+        "${FFMPEG_AVUTIL_LIBRARY}"
+        "${FFMPEG_SWSCALE_LIBRARY}"
+    )
+    if(WIN32)
+        target_link_libraries(FFmpeg::FFmpeg INTERFACE bcrypt secur32 ws2_32)
+    else()
+        target_link_libraries(FFmpeg::FFmpeg INTERFACE m z)
+    endif()
+endfunction()
+
+function(find_root_ffmpeg out_found)
+    if(FFMPEG_ROOT STREQUAL "")
+        set(${out_found} FALSE PARENT_SCOPE)
+        return()
+    endif()
+
+    find_path(FFMPEG_INCLUDE_DIR NAMES libavformat/avformat.h
+              PATHS "${FFMPEG_ROOT}/include" NO_DEFAULT_PATH)
+    find_library(FFMPEG_AVFORMAT_LIBRARY NAMES avformat libavformat
+                 PATHS "${FFMPEG_ROOT}/lib" NO_DEFAULT_PATH)
+    find_library(FFMPEG_AVCODEC_LIBRARY NAMES avcodec libavcodec
+                 PATHS "${FFMPEG_ROOT}/lib" NO_DEFAULT_PATH)
+    find_library(FFMPEG_AVUTIL_LIBRARY NAMES avutil libavutil
+                 PATHS "${FFMPEG_ROOT}/lib" NO_DEFAULT_PATH)
+    find_library(FFMPEG_SWSCALE_LIBRARY NAMES swscale libswscale
+                 PATHS "${FFMPEG_ROOT}/lib" NO_DEFAULT_PATH)
+
+    if(FFMPEG_INCLUDE_DIR AND FFMPEG_AVFORMAT_LIBRARY AND FFMPEG_AVCODEC_LIBRARY AND
+       FFMPEG_AVUTIL_LIBRARY AND FFMPEG_SWSCALE_LIBRARY)
+        add_ffmpeg_imported_target()
+        set(${out_found} TRUE PARENT_SCOPE)
+    else()
+        set(${out_found} FALSE PARENT_SCOPE)
+    endif()
+endfunction()
+
+function(add_external_ffmpeg)
+    if(WIN32)
+        message(WARNING "External FFmpeg source builds need a Unix-like toolchain; set FFMPEG_ROOT to a prebuilt SDK on Windows.")
+        return()
+    endif()
+
+    set(ffmpeg_prefix "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg")
+    file(MAKE_DIRECTORY "${ffmpeg_prefix}/include" "${ffmpeg_prefix}/lib")
+    set(ffmpeg_configure_args
+        --prefix=${ffmpeg_prefix}
+        --disable-shared
+        --enable-static
+        --disable-doc
+        --disable-programs
+        --disable-avdevice
+        --disable-postproc
+        --disable-network
+        --disable-everything
+        --enable-avcodec
+        --enable-avformat
+        --enable-avutil
+        --enable-swscale
+        --enable-encoder=mpeg4
+        --enable-encoder=ffv1
+        --enable-encoder=gif
+        --enable-muxer=matroska
+        --enable-muxer=gif
+    )
+    if(ENABLE_GPL_CODECS)
+        list(APPEND ffmpeg_configure_args
+            --enable-gpl
+            --enable-libx264
+            --enable-encoder=libx264
+            --enable-encoder=h264
+        )
+    endif()
+
+    ExternalProject_Add(ffmpeg_external
+        URL https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz
+        UPDATE_DISCONNECTED TRUE
+        CONFIGURE_COMMAND <SOURCE_DIR>/configure ${ffmpeg_configure_args}
+        BUILD_COMMAND make -j
+        INSTALL_COMMAND make install
+        BUILD_BYPRODUCTS
+            "${ffmpeg_prefix}/lib/libavformat.a"
+            "${ffmpeg_prefix}/lib/libavcodec.a"
+            "${ffmpeg_prefix}/lib/libavutil.a"
+            "${ffmpeg_prefix}/lib/libswscale.a"
+    )
+
+    set(FFMPEG_INCLUDE_DIR "${ffmpeg_prefix}/include")
+    set(FFMPEG_AVFORMAT_LIBRARY "${ffmpeg_prefix}/lib/libavformat.a")
+    set(FFMPEG_AVCODEC_LIBRARY "${ffmpeg_prefix}/lib/libavcodec.a")
+    set(FFMPEG_AVUTIL_LIBRARY "${ffmpeg_prefix}/lib/libavutil.a")
+    set(FFMPEG_SWSCALE_LIBRARY "${ffmpeg_prefix}/lib/libswscale.a")
+    add_ffmpeg_imported_target()
+    add_dependencies(FFmpeg::FFmpeg ffmpeg_external)
+endfunction()
+
+if(ENABLE_FFMPEG AND NOT FFMPEG_PROVIDER STREQUAL "off")
+    set(ffmpeg_found FALSE)
+    find_root_ffmpeg(ffmpeg_found)
+    if(NOT ffmpeg_found AND (FFMPEG_PROVIDER STREQUAL "external" OR
+                             (FFMPEG_PROVIDER STREQUAL "auto" AND NOT WIN32)))
+        add_external_ffmpeg()
+        if(TARGET FFmpeg::FFmpeg)
+            set(ffmpeg_found TRUE)
+        endif()
+    endif()
+    if(NOT ffmpeg_found)
+        if(FFMPEG_PROVIDER STREQUAL "root" OR FFMPEG_PROVIDER STREQUAL "external")
+            message(FATAL_ERROR "FFmpeg provider '${FFMPEG_PROVIDER}' was requested but could not be configured.")
+        endif()
+        message(WARNING "FFmpeg media export disabled. Set FFMPEG_ROOT or FFMPEG_PROVIDER=external.")
+    endif()
 endif()
 
 find_package(OpenMP QUIET COMPONENTS C)

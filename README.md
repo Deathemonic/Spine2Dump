@@ -19,8 +19,11 @@ spine2dump inspect ./assets
 # Dump spine animation frames as numbered PNGs
 spine2dump dump ./assets -o ./output --animation idle --start 0 --end 2 --fps 30
 
-# Dump 2 seconds of the idle animation at 30 fps
-spine2dump dump ./assets -o ./output --animation idle --start 0 --end 2 --fps 30
+# Export 2 seconds of the idle animation as video or GIF
+spine2dump dump ./assets -o ./output --animation idle --start 0 --end 2 --fps 30 --format video
+
+# Use a different video codec when needed
+spine2dump dump ./assets -o ./output --animation idle --format video --codec ffv1
 
 # Render one still per expression attachment instead of animation frames
 spine2dump dump ./assets -o ./output --stills
@@ -79,9 +82,11 @@ spine2dump dump ./assets -o ./output --stills
 | `--trim-padding <px>`         | Padding kept around trimmed bounds            | `0`                 |
 | `--alpha-threshold <0-255>`   | Minimum alpha counted as visible              |                     |
 | `--compression <preset>`      | PNG compression preset (all lossless)         | `fast`, `balanced`, `small` |
+| `--format <format>`           | Animation output format                       | `image`, `gif`, `video` |
+| `--codec <codec>`             | Video codec                                   | `h264`, `mpeg4`, `ffv1` |
 | `--help`                      | Print help                                    |                     |
 
-The animation/time options (`--animation`, `--start`, `--end`, `--fps`, `--trim-mode`) are ignored in `--stills` mode.
+The animation/time options (`--animation`, `--start`, `--end`, `--fps`, `--trim-mode`) are ignored in `--stills` mode. Media formats are only supported for animation dumps. `--codec` only applies to `--format video`.
 
 </details>
 

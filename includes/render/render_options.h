@@ -9,6 +9,18 @@ typedef enum RenderTrimMode {
     RENDER_TRIM_ANIMATION = 2
 } RenderTrimMode;
 
+typedef enum RenderOutputKind {
+    RENDER_OUTPUT_IMAGE = 0,
+    RENDER_OUTPUT_GIF,
+    RENDER_OUTPUT_VIDEO
+} RenderOutputKind;
+
+typedef enum RenderVideoCodec {
+    RENDER_VIDEO_CODEC_H264 = 0,
+    RENDER_VIDEO_CODEC_MPEG4,
+    RENDER_VIDEO_CODEC_FFV1
+} RenderVideoCodec;
+
 typedef struct RenderOptions {
     int width;
     int height;

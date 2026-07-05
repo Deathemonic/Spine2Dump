@@ -10,6 +10,8 @@ typedef struct SpineDumpOptions {
     double fps;
     RenderOptions render;
     RenderTrimMode trim_mode;
+    RenderOutputKind output;
+    RenderVideoCodec codec;
 } SpineDumpOptions;
 
 typedef struct SpineDumpExpressionsOptions {

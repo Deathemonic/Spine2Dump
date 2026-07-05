@@ -12,6 +12,8 @@ typedef struct {
     double fps;
     RenderOptions render;
     RenderTrimMode trim_mode;
+    RenderOutputKind output;
+    RenderVideoCodec codec;
     int stills;
 } DumpOptions;
 

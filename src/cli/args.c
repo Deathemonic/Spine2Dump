@@ -50,13 +50,15 @@ DumpArgs cli_dump_args(void) {
                               "animation crop behavior"),
         .compression = arg_str0(NULL, "compression", "<fast|balanced|small>",
                                 "png compression preset (default balanced)"),
-        .end = arg_end(16),
+        .format = arg_str0(NULL, "format", "<image|gif|video>", "animation output format"),
+        .codec = arg_str0(NULL, "codec", "<h264|mpeg4|ffv1>", "video codec"),
+        .end = arg_end(18),
     };
     void* table[] = {args.help,        args.input,        args.output,          args.stills,
                      args.animation,   args.start,        args.end_time,        args.fps,
                      args.size,        args.width,        args.height,          args.scale,
                      args.trim,        args.trim_padding, args.alpha_threshold, args.trim_mode,
-                     args.compression, args.end};
+                     args.compression, args.format,       args.codec,           args.end};
     COPY_ARRAY(args.table, table);
     return args;
 }

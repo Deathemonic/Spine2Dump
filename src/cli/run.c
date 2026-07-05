@@ -85,6 +85,22 @@ static int command_dump(const DumpOptions* options) {
             options->render.scale);
     ZF_LOGI("  trim:      %s padding %d alpha >= %u", options->render.trim ? "enabled" : "disabled",
             options->render.trim_padding, (unsigned)options->render.alpha_threshold);
+    const char* format_name = "image";
+    if (options->output == RENDER_OUTPUT_GIF) {
+        format_name = "gif";
+    } else if (options->output == RENDER_OUTPUT_VIDEO) {
+        format_name = "video";
+    }
+    ZF_LOGI("  format:    %s", format_name);
+    if (options->output == RENDER_OUTPUT_VIDEO) {
+        const char* codec_name = "h264";
+        if (options->codec == RENDER_VIDEO_CODEC_MPEG4) {
+            codec_name = "mpeg4";
+        } else if (options->codec == RENDER_VIDEO_CODEC_FFV1) {
+            codec_name = "ffv1";
+        }
+        ZF_LOGI("  codec:     %s", codec_name);
+    }
 
     if (options->stills) {
         SpineDumpExpressionsOptions backend_options = {
@@ -118,6 +134,8 @@ static int command_dump(const DumpOptions* options) {
             .fps = options->fps,
             .render = options->render,
             .trim_mode = options->trim_mode,
+            .output = options->output,
+            .codec = options->codec,
         };
         result = spine_backend_dump_animations(bundle.skel_files.items[0],
                                                bundle.atlas_files.items[0], options->output_dir,

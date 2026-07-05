@@ -12,6 +12,7 @@
 
 #include "cpu_renderer.h"
 #include "file.h"
+#include "media_encoder.h"
 #include "path.h"
 #include "spine_backend.h"
 #include "spine_compat.h"
@@ -395,13 +396,27 @@ static int dump_one_animation(spSkeletonData* data,
                               const char* output_dir,
                               const SpineDumpOptions* options) {
     char safe_animation[128];
-    char animation_dir[1024];
+    char frame_dir[1024];
     sanitize_filename(animation->name, safe_animation, sizeof(safe_animation));
-    if (path_join(output_dir, safe_animation, animation_dir, sizeof(animation_dir)) != 0) {
+    if (options->output == RENDER_OUTPUT_IMAGE) {
+        if (path_join(output_dir, safe_animation, frame_dir, sizeof(frame_dir)) != 0) {
+            ZF_LOGE("animation output path is too long: %s", animation->name);
+            return -1;
+        }
+    } else {
+        char temp_name[192];
+        snprintf(temp_name, sizeof(temp_name), ".%s.frames.tmp", safe_animation);
+        if (path_join(output_dir, temp_name, frame_dir, sizeof(frame_dir)) != 0) {
+            ZF_LOGE("animation output path is too long: %s", animation->name);
+            return -1;
+        }
+        file_remove_tree(frame_dir);
+    }
+    if (frame_dir[0] == '\0') {
         ZF_LOGE("animation output path is too long: %s", animation->name);
         return -1;
     }
-    path_make_dirs(animation_dir);
+    path_make_dirs(frame_dir);
 
     double start = options->start_seconds;
     double end = options->end_seconds >= 0.0 ? options->end_seconds : animation->duration;
@@ -472,7 +487,7 @@ static int dump_one_animation(spSkeletonData* data,
             .output_path = output_path,
             .forced_crop = forced_crop,
         };
-        if (path_join(animation_dir, file_name, output_path, sizeof(output_path)) != 0 ||
+        if (path_join(frame_dir, file_name, output_path, sizeof(output_path)) != 0 ||
             cpu_renderer_render_png(&render_request) != 0) {
 #pragma omp atomic write
             failed = 1;
@@ -482,7 +497,38 @@ static int dump_one_animation(spSkeletonData* data,
     }
 
     cpu_atlas_pages_free(pages);
-    return failed ? -1 : 0;
+    if (failed) {
+        if (options->output != RENDER_OUTPUT_IMAGE) {
+            file_remove_tree(frame_dir);
+        }
+        return -1;
+    }
+    if (options->output == RENDER_OUTPUT_IMAGE) {
+        return 0;
+    }
+
+    char media_name[192];
+    char media_path[1024];
+    snprintf(media_name, sizeof(media_name), "%s.%s", safe_animation,
+             media_output_extension(options->output));
+    if (path_join(output_dir, media_name, media_path, sizeof(media_path)) != 0) {
+        ZF_LOGE("media output path is too long: %s", animation->name);
+        return -1;
+    }
+
+    MediaEncodeRequest encode_request = {
+        .frame_dir = frame_dir,
+        .output_path = media_path,
+        .fps = options->fps,
+        .frame_count = frame_count,
+        .output = options->output,
+        .codec = options->codec,
+    };
+    int encode_result = media_encode_frames(&encode_request);
+    if (file_remove_tree(frame_dir) != 0) {
+        ZF_LOGW("could not remove temporary frames: %s", frame_dir);
+    }
+    return encode_result;
 }
 
 int spine_backend_dump_animations(const char* skel_path,

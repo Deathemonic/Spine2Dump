@@ -86,6 +86,40 @@ static int parse_compression(const char* value, PngCompressionPreset* preset) {
     return -1;
 }
 
+static int parse_output(const char* value, RenderOutputKind* output) {
+    if (value == NULL || strcmp(value, "image") == 0) {
+        *output = RENDER_OUTPUT_IMAGE;
+        return 0;
+    }
+    if (strcmp(value, "gif") == 0) {
+        *output = RENDER_OUTPUT_GIF;
+        return 0;
+    }
+    if (strcmp(value, "video") == 0) {
+        *output = RENDER_OUTPUT_VIDEO;
+        return 0;
+    }
+    ZF_LOGE("Invalid output format: %s", value);
+    return -1;
+}
+
+static int parse_codec(const char* value, RenderVideoCodec* codec) {
+    if (value == NULL || strcmp(value, "h264") == 0) {
+        *codec = RENDER_VIDEO_CODEC_H264;
+        return 0;
+    }
+    if (strcmp(value, "mpeg4") == 0) {
+        *codec = RENDER_VIDEO_CODEC_MPEG4;
+        return 0;
+    }
+    if (strcmp(value, "ffv1") == 0) {
+        *codec = RENDER_VIDEO_CODEC_FFV1;
+        return 0;
+    }
+    ZF_LOGE("Invalid video codec: %s", value);
+    return -1;
+}
+
 static void print_argtable_help(const char* progname, void** argtable) {
     printf("Usage: %s", progname);
     arg_print_syntax(stdout, argtable, "\n\n");
@@ -141,6 +175,8 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
             .end_seconds = args.end_time->count > 0 ? args.end_time->dval[0] : -1.0,
             .fps = args.fps->count > 0 ? args.fps->dval[0] : 30.0,
             .trim_mode = RENDER_TRIM_NONE,
+            .output = RENDER_OUTPUT_IMAGE,
+            .codec = RENDER_VIDEO_CODEC_H264,
             .stills = args.stills->count > 0,
         };
         if (read_render_options(args.size, args.width, args.height, args.scale, args.trim,
@@ -148,7 +184,10 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
             parse_trim_mode(args.trim_mode->count > 0 ? args.trim_mode->sval[0] : NULL,
                             &options->trim_mode) != 0 ||
             parse_compression(args.compression->count > 0 ? args.compression->sval[0] : NULL,
-                              &options->render.png_compression) != 0) {
+                              &options->render.png_compression) != 0 ||
+            parse_output(args.format->count > 0 ? args.format->sval[0] : NULL, &options->output) !=
+                0 ||
+            parse_codec(args.codec->count > 0 ? args.codec->sval[0] : NULL, &options->codec) != 0) {
             errors = 1;
         }
         if (options->trim_mode != RENDER_TRIM_NONE) {
@@ -157,6 +196,14 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
         if (options->start_seconds < 0.0 || options->fps <= 0.0 ||
             (options->end_seconds >= 0.0 && options->end_seconds < options->start_seconds)) {
             ZF_LOGE("Invalid time/fps options.");
+            errors = 1;
+        }
+        if (options->stills && options->output != RENDER_OUTPUT_IMAGE) {
+            ZF_LOGE("Media formats are only supported for animation dumps.");
+            errors = 1;
+        }
+        if (args.codec->count > 0 && options->output != RENDER_OUTPUT_VIDEO) {
+            ZF_LOGE("Video codec can only be used with --format video.");
             errors = 1;
         }
     }
