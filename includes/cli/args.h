@@ -14,13 +14,15 @@ typedef struct {
 
 typedef struct {
     struct arg_lit* help;
+    struct arg_lit* verbose;
     struct arg_file* input;
     struct arg_end* end;
-    void* table[3];
+    void* table[4];
 } OneDirArgs;
 
 typedef struct {
     struct arg_lit* help;
+    struct arg_lit* verbose;
     struct arg_file* input;
     struct arg_file* output;
     struct arg_lit* stills;
@@ -40,7 +42,7 @@ typedef struct {
     struct arg_str* format;
     struct arg_str* codec;
     struct arg_end* end;
-    void* table[20];
+    void* table[21];
 } DumpArgs;
 
 RootArgs cli_root_args(void);

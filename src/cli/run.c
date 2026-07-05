@@ -8,6 +8,7 @@
 #include "asset_bundle.h"
 #include "common.h"
 #include "log.h"
+#include "media_encoder.h"
 #include "parser.h"
 #include "spine_backend.h"
 
@@ -147,8 +148,19 @@ cleanup:
     return result;
 }
 
+static int argv_has_verbose(int argc, char** argv) {
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int cli_run(int argc, char** argv) {
-    log_setup();
+    int verbose = argv_has_verbose(argc, argv);
+    log_setup(verbose);
+    media_encoder_set_verbose(verbose);
 
     if (argc < 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
         cli_print_root_help();

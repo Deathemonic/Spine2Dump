@@ -13,6 +13,7 @@ typedef struct MediaEncodeRequest {
     RenderVideoCodec codec;
 } MediaEncodeRequest;
 
+void media_encoder_set_verbose(int verbose);
 const char* media_output_extension(RenderOutputKind output);
 MediaEncoder* media_encoder_open(const MediaEncodeRequest* request, int width, int height);
 int media_encoder_write(MediaEncoder* encoder, const RgbaImage* image, int frame_index);

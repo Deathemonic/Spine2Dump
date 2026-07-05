@@ -14,6 +14,14 @@
     #include <libswscale/swscale.h>
 #endif
 
+void media_encoder_set_verbose(int verbose) {
+#if defined(HAVE_FFMPEG)
+    av_log_set_level(verbose ? AV_LOG_INFO : AV_LOG_QUIET);
+#else
+    (void)verbose;
+#endif
+}
+
 const char* media_output_extension(RenderOutputKind output) {
     switch (output) {
         case RENDER_OUTPUT_VIDEO:

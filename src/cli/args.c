@@ -18,10 +18,11 @@ RootArgs cli_root_args(void) {
 OneDirArgs cli_one_dir_args(void) {
     OneDirArgs args = {
         .help = arg_lit0("h", "help", "display this help and exit"),
+        .verbose = arg_lit0("v", "verbose", "enable debug and ffmpeg logs"),
         .input = arg_file1(NULL, NULL, "<asset-dir>", "asset directory"),
         .end = arg_end(8),
     };
-    void* table[] = {args.help, args.input, args.end};
+    void* table[] = {args.help, args.verbose, args.input, args.end};
     COPY_ARRAY(args.table, table);
     return args;
 }
@@ -29,6 +30,7 @@ OneDirArgs cli_one_dir_args(void) {
 DumpArgs cli_dump_args(void) {
     DumpArgs args = {
         .help = arg_lit0("h", "help", "display this help and exit"),
+        .verbose = arg_lit0("v", "verbose", "enable debug and ffmpeg logs"),
         .input = arg_file1(NULL, NULL, "<asset-dir>", "asset directory"),
         .output = arg_file1("o", "output", "<output-dir>", "output directory"),
         .stills = arg_lit0(
@@ -54,11 +56,12 @@ DumpArgs cli_dump_args(void) {
         .codec = arg_str0(NULL, "codec", "<h264|mpeg4|ffv1>", "video codec"),
         .end = arg_end(18),
     };
-    void* table[] = {args.help,        args.input,        args.output,          args.stills,
-                     args.animation,   args.start,        args.end_time,        args.fps,
-                     args.size,        args.width,        args.height,          args.scale,
-                     args.trim,        args.trim_padding, args.alpha_threshold, args.trim_mode,
-                     args.compression, args.format,       args.codec,           args.end};
+    void* table[] = {args.help,      args.verbose,     args.input,        args.output,
+                     args.stills,    args.animation,   args.start,        args.end_time,
+                     args.fps,       args.size,        args.width,        args.height,
+                     args.scale,     args.trim,        args.trim_padding, args.alpha_threshold,
+                     args.trim_mode, args.compression, args.format,       args.codec,
+                     args.end};
     COPY_ARRAY(args.table, table);
     return args;
 }
