@@ -39,7 +39,7 @@ struct MediaEncoder {
     AVFormatContext* format;
     AVCodecContext* codec;
     AVStream* stream;
-    SwsContext* scale;
+    struct SwsContext* scale;
     AVFrame* frame;
     AVPacket* packet;
     unsigned char* rgba;
