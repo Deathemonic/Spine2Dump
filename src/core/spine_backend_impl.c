@@ -13,6 +13,9 @@
 #include "cpu_renderer.h"
 #include "display.h"
 #include "file.h"
+#include "gpu_backend.h"
+#include "gpu_renderer.h"
+#include "image_io.h"
 #include "media_encoder.h"
 #include "path.h"
 #include "spine_backend.h"
@@ -128,6 +131,67 @@ static void sanitize_filename(const char* input, char* output, size_t output_siz
     output[written] = '\0';
 }
 
+static GpuBackend* try_gpu_init(const RenderOptions* options, const CpuAtlasPages* pages) {
+    if (options->software) {
+        return NULL;
+    }
+    GpuBackend* backend = gpu_backend_init(options->width, options->height);
+    if (backend == NULL) {
+        ZF_LOGW("GPU init failed; falling back to CPU renderer");
+        return NULL;
+    }
+    if (gpu_backend_upload_atlas(backend, pages) != 0) {
+        ZF_LOGW("GPU atlas upload failed; falling back to CPU renderer");
+        gpu_backend_shutdown(backend);
+        return NULL;
+    }
+    return backend;
+}
+
+static int render_image_dispatch(GpuBackend* backend,
+                                 spSkeleton* skeleton,
+                                 spAtlas* atlas,
+                                 const char* atlas_dir,
+                                 const CpuAtlasPages* pages,
+                                 const RenderOptions* options,
+                                 RgbaImage* out) {
+    if (backend != NULL) {
+        GpuRenderRequest request = {
+            .backend = backend,
+            .skeleton = skeleton,
+            .atlas = atlas,
+            .pages = pages,
+            .options = options,
+        };
+        return gpu_renderer_render_image(&request, out);
+    }
+    CpuRenderRequest request = {
+        .skeleton = skeleton,
+        .atlas = atlas,
+        .atlas_dir = atlas_dir,
+        .options = options,
+        .pages = pages,
+    };
+    return cpu_renderer_render_image(&request, out);
+}
+
+static int write_png_image(const RgbaImage* image,
+                           const RenderOptions* options,
+                           const RenderCropRect* forced_crop,
+                           const char* output_path) {
+    RgbaImage cropped = {};
+    const RgbaImage* output = render_canvas_select_output(image, options, forced_crop, &cropped);
+    PngEncodeOptions encode_options = png_encode_options_for(options->png_compression);
+    int result = image_encode_png32_file(output_path, output->pixels, (unsigned)output->width,
+                                         (unsigned)output->height, &encode_options);
+    rgba_image_free(&cropped);
+    if (result != 0) {
+        ZF_LOGE("could not write PNG: %s", output_path);
+        return -1;
+    }
+    return 0;
+}
+
 typedef struct {
     const spSkeletonData* data;
     const spSkin* skin;
@@ -158,6 +222,8 @@ typedef struct {
     const char* output_dir;
     const SpineDumpExpressionsOptions* options;
     spSkin* skin;
+    CpuAtlasPages* pages;
+    GpuBackend* backend;
     int rendered;
 } DumpExpressionsContext;
 
@@ -192,19 +258,17 @@ static void dump_expression(int slot_index,
     sanitize_filename(attachment_name, safe_attachment, sizeof(safe_attachment));
     snprintf(file_name, sizeof(file_name), "%s__%s.png", safe_slot, safe_attachment);
 
-    CpuRenderPngRequest render_request = {
-        .render =
-            {
-                     .skeleton = skeleton,
-                     .atlas = context->atlas,
-                     .atlas_dir = context->atlas_dir,
-                     .options = &context->options->render,
-                     },
-        .output_path = output_path,
-        .forced_crop = NULL,
-    };
-    if (path_join(context->output_dir, file_name, output_path, sizeof(output_path)) == 0 &&
-        cpu_renderer_render_png(&render_request) == 0) {
+    RgbaImage image = {};
+    int result = path_join(context->output_dir, file_name, output_path, sizeof(output_path));
+    if (result == 0) {
+        result = render_image_dispatch(context->backend, skeleton, context->atlas, context->atlas_dir,
+                                       context->pages, &context->options->render, &image);
+    }
+    if (result == 0) {
+        result = write_png_image(&image, &context->options->render, NULL, output_path);
+    }
+    rgba_image_free(&image);
+    if (result == 0) {
         ZF_LOGI("wrote %s", output_path);
         context->rendered++;
     }
@@ -316,6 +380,15 @@ int spine_backend_dump_expressions(const char* skel_path,
     char atlas_dir[1024];
     path_dirname(atlas_path, atlas_dir, sizeof(atlas_dir));
 
+    CpuAtlasPages* pages = cpu_atlas_pages_load(atlas, atlas_dir);
+    if (pages == NULL) {
+        spSkeletonData_dispose(data);
+        spSkeletonBinary_dispose(binary);
+        spAtlas_dispose(atlas);
+        return -1;
+    }
+    GpuBackend* backend = try_gpu_init(&options->render, pages);
+
     DumpExpressionsContext context = {
         .data = data,
         .atlas = atlas,
@@ -323,6 +396,8 @@ int spine_backend_dump_expressions(const char* skel_path,
         .output_dir = output_dir,
         .options = options,
         .skin = NULL,
+        .pages = pages,
+        .backend = backend,
         .rendered = 0,
     };
     for (int i = 0; i < data->skinsCount; i++) {
@@ -334,6 +409,8 @@ int spine_backend_dump_expressions(const char* skel_path,
         ZF_LOGW("no expression candidates were rendered");
     }
 
+    gpu_backend_shutdown(backend);
+    cpu_atlas_pages_free(pages);
     spSkeletonData_dispose(data);
     spSkeletonBinary_dispose(binary);
     spAtlas_dispose(atlas);
@@ -364,6 +441,7 @@ static int compute_animation_crop(spSkeletonData* data,
                                   spAtlas* atlas,
                                   const char* atlas_dir,
                                   const CpuAtlasPages* pages,
+                                  GpuBackend* backend,
                                   spAnimation* animation,
                                   const SpineDumpOptions* options,
                                   double start,
@@ -378,15 +456,9 @@ static int compute_animation_crop(spSkeletonData* data,
             return -1;
         }
 
-        CpuRenderRequest request = {
-            .skeleton = skeleton,
-            .atlas = atlas,
-            .atlas_dir = atlas_dir,
-            .options = &options->render,
-            .pages = pages,
-        };
         RgbaImage image = {};
-        int result = cpu_renderer_render_image(&request, &image);
+        int result = render_image_dispatch(backend, skeleton, atlas, atlas_dir, pages,
+                                           &options->render, &image);
         spSkeleton_dispose(skeleton);
         if (result != 0) {
             return -1;
@@ -447,12 +519,15 @@ static int dump_one_animation(spSkeletonData* data,
         ZF_LOGE("could not load atlas pages for %s", animation->name);
         return -1;
     }
+    GpuBackend* backend = try_gpu_init(&options->render, pages);
+    int gpu_active = backend != NULL;
 
     RenderCropRect animation_crop = {};
     if ((options->trim_mode == RENDER_TRIM_ANIMATION ||
          (options->output != RENDER_OUTPUT_IMAGE && options->render.trim)) &&
-        compute_animation_crop(data, atlas, atlas_dir, pages, animation, options, start, end,
+        compute_animation_crop(data, atlas, atlas_dir, pages, backend, animation, options, start, end,
                                frame_count, &animation_crop) != 0) {
+        gpu_backend_shutdown(backend);
         cpu_atlas_pages_free(pages);
         return -1;
     }
@@ -464,6 +539,7 @@ static int dump_one_animation(spSkeletonData* data,
                  media_output_extension(options->output));
         if (path_join(output_dir, media_name, media_path, sizeof(media_path)) != 0) {
             ZF_LOGE("media output path is too long: %s", animation->name);
+            gpu_backend_shutdown(backend);
             cpu_atlas_pages_free(pages);
             return -1;
         }
@@ -484,16 +560,10 @@ static int dump_one_animation(spSkeletonData* data,
                 break;
             }
 
-            CpuRenderRequest render_request = {
-                .skeleton = skeleton,
-                .atlas = atlas,
-                .atlas_dir = atlas_dir,
-                .options = &options->render,
-                .pages = pages,
-            };
             RgbaImage image = {};
             RgbaImage cropped = {};
-            result = cpu_renderer_render_image(&render_request, &image);
+            result = render_image_dispatch(backend, skeleton, atlas, atlas_dir, pages,
+                                           &options->render, &image);
             spSkeleton_dispose(skeleton);
             if (result != 0) {
                 break;
@@ -521,6 +591,7 @@ static int dump_one_animation(spSkeletonData* data,
         if (encoder != NULL && media_encoder_close(encoder) != 0) {
             result = -1;
         }
+        gpu_backend_shutdown(backend);
         cpu_atlas_pages_free(pages);
         return result;
     }
@@ -528,13 +599,14 @@ static int dump_one_animation(spSkeletonData* data,
     char frame_dir[1024];
     if (path_join(output_dir, safe_animation, frame_dir, sizeof(frame_dir)) != 0) {
         ZF_LOGE("animation output path is too long: %s", animation->name);
+        gpu_backend_shutdown(backend);
         cpu_atlas_pages_free(pages);
         return -1;
     }
     path_make_dirs(frame_dir);
 
     int failed = 0;
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic) if(!gpu_active)
     for (int frame = 0; frame < frame_count; frame++) {
         if (failed) {
             continue;
@@ -555,20 +627,17 @@ static int dump_one_animation(spSkeletonData* data,
                                               animation_crop.valid
                                           ? &animation_crop
                                           : NULL;
-        CpuRenderPngRequest render_request = {
-            .render =
-                {
-                         .skeleton = skeleton,
-                         .atlas = atlas,
-                         .atlas_dir = atlas_dir,
-                         .options = &options->render,
-                         .pages = pages,
-                         },
-            .output_path = output_path,
-            .forced_crop = forced_crop,
-        };
-        if (path_join(frame_dir, file_name, output_path, sizeof(output_path)) != 0 ||
-            cpu_renderer_render_png(&render_request) != 0) {
+        RgbaImage image = {};
+        int result = path_join(frame_dir, file_name, output_path, sizeof(output_path));
+        if (result == 0) {
+            result = render_image_dispatch(backend, skeleton, atlas, atlas_dir, pages,
+                                           &options->render, &image);
+        }
+        if (result == 0) {
+            result = write_png_image(&image, &options->render, forced_crop, output_path);
+        }
+        rgba_image_free(&image);
+        if (result != 0) {
 #pragma omp atomic write
             failed = 1;
         }
@@ -576,6 +645,7 @@ static int dump_one_animation(spSkeletonData* data,
         spSkeleton_dispose(skeleton);
     }
 
+    gpu_backend_shutdown(backend);
     cpu_atlas_pages_free(pages);
     if (failed) {
         return -1;
