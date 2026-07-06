@@ -97,33 +97,26 @@ void gpu_frame_dispose(GpuFrame* frame) {
     *frame = (GpuFrame){};
 }
 
-int gpu_frame_push_triangle(GpuFrame* frame,
-                            int page_index,
-                            int image_count,
-                            int height,
-                            int width,
-                            const float* vertices,
-                            const float* uvs,
-                            RasterTriangle triangle,
-                            RasterTransform transform,
-                            RasterShade shade) {
-    if (frame == NULL || page_index < 0 || page_index >= image_count) {
+int gpu_frame_push_triangle(GpuFrame* frame, const GpuFrameTriangleRequest* request) {
+    if (frame == NULL || request == NULL || request->page_index < 0 ||
+        request->page_index >= request->image_count) {
         return -1;
     }
     if (ensure_vertex_capacity(frame, frame->vertex_count + 3) != 0) {
         return -1;
     }
-    int blend_mode = shade.blend_mode;
+    int blend_mode = request->shade.blend_mode;
     if (blend_mode < 0 || blend_mode >= GPU_BLEND_MODE_COUNT) {
         blend_mode = GPU_BLEND_MODE_NORMAL;
     }
-    if (frame->batch_count == 0 || frame->batches[frame->batch_count - 1].page_index != page_index ||
+    if (frame->batch_count == 0 ||
+        frame->batches[frame->batch_count - 1].page_index != request->page_index ||
         frame->batches[frame->batch_count - 1].blend_mode != blend_mode) {
         if (ensure_batch_capacity(frame, frame->batch_count + 1) != 0) {
             return -1;
         }
         frame->batches[frame->batch_count] = (GpuBatch){
-            .page_index = page_index,
+            .page_index = request->page_index,
             .blend_mode = blend_mode,
             .base_vertex = frame->vertex_count,
             .vertex_count = 0,
@@ -131,51 +124,53 @@ int gpu_frame_push_triangle(GpuFrame* frame,
         frame->batch_count++;
     }
 
-    int indices[3] = {triangle.a, triangle.b, triangle.c};
-    uint32_t color = color_pack(shade.color[0], shade.color[1], shade.color[2], shade.color[3]);
+    int indices[3] = {request->triangle.a, request->triangle.b, request->triangle.c};
+    uint32_t color = color_pack(request->shade.color[0], request->shade.color[1],
+                                request->shade.color[2], request->shade.color[3]);
     for (int i = 0; i < 3; i++) {
         int index = indices[i];
-        float world_x = vertices[index * 2];
-        float world_y = vertices[index * 2 + 1];
+        float world_x = request->vertices[index * 2];
+        float world_y = request->vertices[index * 2 + 1];
         GpuVertex* out = &frame->vertices[frame->vertex_count++];
-        out->x = (world_x - transform.min_x) * transform.scale / (float)width;
-        out->y = ((float)(height - 1) - (world_y - transform.min_y) * transform.scale) /
-                 (float)height;
-        out->u = uvs[index * 2];
-        out->v = uvs[index * 2 + 1];
+        out->x = (world_x - request->transform.min_x) * request->transform.scale /
+                 (float)request->width;
+        out->y = ((float)(request->height - 1) -
+                  (world_y - request->transform.min_y) * request->transform.scale) /
+                 (float)request->height;
+        out->u = request->uvs[index * 2];
+        out->v = request->uvs[index * 2 + 1];
         out->color = color;
     }
     frame->batches[frame->batch_count - 1].vertex_count += 3;
     return 0;
 }
 
-int gpu_frame_submit(GpuFrame* frame,
-                     sg_buffer* vertex_buffer,
-                     int* gpu_vertex_capacity,
-                     sg_view* image_views,
-                     const GpuPipelines* pipelines) {
-    if (frame == NULL || vertex_buffer == NULL || gpu_vertex_capacity == NULL || image_views == NULL ||
-        pipelines == NULL) {
+int gpu_frame_submit(const GpuFrameSubmitRequest* request) {
+    if (request == NULL || request->frame == NULL || request->vertex_buffer == NULL ||
+        request->gpu_vertex_capacity == NULL || request->image_views == NULL ||
+        request->pipelines == NULL) {
         return -1;
     }
-    if (frame->vertex_count > 0 &&
-        ensure_gpu_capacity(vertex_buffer, gpu_vertex_capacity, frame->vertex_count) != 0) {
+    GpuFrame* frame = request->frame;
+    if (frame->vertex_count > 0 && ensure_gpu_capacity(request->vertex_buffer,
+                                                       request->gpu_vertex_capacity,
+                                                       frame->vertex_count) != 0) {
         return -1;
     }
     if (frame->vertex_count > 0) {
-        sg_update_buffer(*vertex_buffer, &(sg_range){
-                                           .ptr = frame->vertices,
-                                           .size = (size_t)frame->vertex_count *
-                                                   sizeof(*frame->vertices),
-                                       });
+        sg_update_buffer(*request->vertex_buffer, &(sg_range){
+                                                    .ptr = frame->vertices,
+                                                    .size = (size_t)frame->vertex_count *
+                                                            sizeof(*frame->vertices),
+                                                });
     }
     for (int i = 0; i < frame->batch_count; i++) {
         GpuBatch* batch = &frame->batches[i];
-        sg_apply_pipeline(pipelines->pipelines[batch->blend_mode]);
+        sg_apply_pipeline(request->pipelines->pipelines[batch->blend_mode]);
         sg_apply_bindings(&(sg_bindings){
-            .vertex_buffers[0] = *vertex_buffer,
-            .views[0] = image_views[batch->page_index],
-            .samplers[0] = pipelines->sampler,
+            .vertex_buffers[0] = *request->vertex_buffer,
+            .views[0] = request->image_views[batch->page_index],
+            .samplers[0] = request->pipelines->sampler,
         });
         sg_draw(batch->base_vertex, batch->vertex_count, 1);
     }

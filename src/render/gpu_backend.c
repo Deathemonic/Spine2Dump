@@ -144,8 +144,18 @@ void gpu_backend_draw_triangle(GpuBackend* backend,
     if (backend == NULL) {
         return;
     }
-    gpu_frame_push_triangle(&backend->frame, page_index, backend->image_count, backend->height,
-                            backend->width, vertices, uvs, triangle, transform, shade);
+    gpu_frame_push_triangle(&backend->frame,
+                            &(GpuFrameTriangleRequest){
+                                .page_index = page_index,
+                                .image_count = backend->image_count,
+                                .width = backend->width,
+                                .height = backend->height,
+                                .vertices = vertices,
+                                .uvs = uvs,
+                                .triangle = triangle,
+                                .transform = transform,
+                                .shade = shade,
+                            });
 }
 
 int gpu_backend_end_frame(GpuBackend* backend, RgbaImage* out) {
@@ -158,9 +168,13 @@ int gpu_backend_end_frame(GpuBackend* backend, RgbaImage* out) {
         .action = {.colors[0] = {.load_action = SG_LOADACTION_CLEAR,
                                  .clear_value = {0.0f, 0.0f, 0.0f, 0.0f}}},
     });
-    int submit_result = gpu_frame_submit(&backend->frame, &backend->vertex_buffer,
-                                         &backend->gpu_vertex_capacity, backend->image_views,
-                                         &backend->pipelines);
+    int submit_result = gpu_frame_submit(&(GpuFrameSubmitRequest){
+        .frame = &backend->frame,
+        .vertex_buffer = &backend->vertex_buffer,
+        .gpu_vertex_capacity = &backend->gpu_vertex_capacity,
+        .image_views = backend->image_views,
+        .pipelines = &backend->pipelines,
+    });
     sg_end_pass();
     sg_commit();
     if (submit_result != 0) {

@@ -32,22 +32,29 @@ typedef struct GpuFrame {
     int batch_capacity;
 } GpuFrame;
 
+typedef struct GpuFrameTriangleRequest {
+    int page_index;
+    int image_count;
+    int width;
+    int height;
+    const float* vertices;
+    const float* uvs;
+    RasterTriangle triangle;
+    RasterTransform transform;
+    RasterShade shade;
+} GpuFrameTriangleRequest;
+
+typedef struct GpuFrameSubmitRequest {
+    GpuFrame* frame;
+    sg_buffer* vertex_buffer;
+    int* gpu_vertex_capacity;
+    sg_view* image_views;
+    const GpuPipelines* pipelines;
+} GpuFrameSubmitRequest;
+
 void gpu_frame_reset(GpuFrame* frame);
 void gpu_frame_dispose(GpuFrame* frame);
-int gpu_frame_push_triangle(GpuFrame* frame,
-                            int page_index,
-                            int image_count,
-                            int height,
-                            int width,
-                            const float* vertices,
-                            const float* uvs,
-                            RasterTriangle triangle,
-                            RasterTransform transform,
-                            RasterShade shade);
-int gpu_frame_submit(GpuFrame* frame,
-                     sg_buffer* vertex_buffer,
-                     int* gpu_vertex_capacity,
-                     sg_view* image_views,
-                     const GpuPipelines* pipelines);
+int gpu_frame_push_triangle(GpuFrame* frame, const GpuFrameTriangleRequest* request);
+int gpu_frame_submit(const GpuFrameSubmitRequest* request);
 
 #endif
