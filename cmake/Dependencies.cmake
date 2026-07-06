@@ -274,14 +274,14 @@ function(add_embedded_runtime spine_version)
     )
 endfunction()
 
-FetchContent_Declare(sokol_gp_src
-    GIT_REPOSITORY https://github.com/edubart/sokol_gp.git
+FetchContent_Declare(sokol_src
+    GIT_REPOSITORY https://github.com/floooh/sokol.git
     GIT_TAG master
     UPDATE_DISCONNECTED TRUE
 )
-FetchContent_GetProperties(sokol_gp_src)
-if(NOT sokol_gp_src_POPULATED)
-    FetchContent_Populate(sokol_gp_src)
+FetchContent_GetProperties(sokol_src)
+if(NOT sokol_src_POPULATED)
+    FetchContent_Populate(sokol_src)
 endif()
 
 set(LIBUV_BUILD_SHARED OFF CACHE BOOL "Build shared libuv" FORCE)
