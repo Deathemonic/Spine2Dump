@@ -15,8 +15,8 @@ function(add_ffmpeg_imported_target)
     target_link_libraries(FFmpeg::FFmpeg INTERFACE
         "${FFMPEG_AVFORMAT_LIBRARY}"
         "${FFMPEG_AVCODEC_LIBRARY}"
-        "${FFMPEG_AVUTIL_LIBRARY}"
         "${FFMPEG_SWSCALE_LIBRARY}"
+        "${FFMPEG_AVUTIL_LIBRARY}"
     )
     if(WIN32)
         target_link_libraries(FFmpeg::FFmpeg INTERFACE bcrypt secur32 ws2_32)
