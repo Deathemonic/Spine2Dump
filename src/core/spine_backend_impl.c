@@ -152,45 +152,54 @@ static int should_use_gpu_for_output(const RenderOptions* render, RenderOutputKi
     return !render->software && output != RENDER_OUTPUT_IMAGE;
 }
 
-static int render_image_dispatch(GpuBackend* backend,
-                                 spSkeleton* skeleton,
-                                 spAtlas* atlas,
-                                 const char* atlas_dir,
-                                 const CpuAtlasPages* pages,
-                                 const RenderOptions* options,
-                                 RgbaImage* out) {
-    if (backend != NULL) {
-        GpuRenderRequest request = {
-            .backend = backend,
-            .skeleton = skeleton,
-            .atlas = atlas,
-            .pages = pages,
-            .options = options,
+typedef struct RenderImageDispatchRequest {
+    GpuBackend* backend;
+    spSkeleton* skeleton;
+    spAtlas* atlas;
+    const char* atlas_dir;
+    const CpuAtlasPages* pages;
+    const RenderOptions* options;
+} RenderImageDispatchRequest;
+
+typedef struct WritePngRequest {
+    const RgbaImage* image;
+    const RenderOptions* options;
+    const RenderCropRect* forced_crop;
+    const char* output_path;
+} WritePngRequest;
+
+static int render_image_dispatch(const RenderImageDispatchRequest* request, RgbaImage* out) {
+    if (request->backend != NULL) {
+        GpuRenderRequest gpu_request = {
+            .backend = request->backend,
+            .skeleton = request->skeleton,
+            .atlas = request->atlas,
+            .pages = request->pages,
+            .options = request->options,
         };
-        return gpu_renderer_render_image(&request, out);
+        return gpu_renderer_render_image(&gpu_request, out);
     }
-    CpuRenderRequest request = {
-        .skeleton = skeleton,
-        .atlas = atlas,
-        .atlas_dir = atlas_dir,
-        .options = options,
-        .pages = pages,
+    CpuRenderRequest cpu_request = {
+        .skeleton = request->skeleton,
+        .atlas = request->atlas,
+        .atlas_dir = request->atlas_dir,
+        .options = request->options,
+        .pages = request->pages,
     };
-    return cpu_renderer_render_image(&request, out);
+    return cpu_renderer_render_image(&cpu_request, out);
 }
 
-static int write_png_image(const RgbaImage* image,
-                           const RenderOptions* options,
-                           const RenderCropRect* forced_crop,
-                           const char* output_path) {
+static int write_png_image(const WritePngRequest* request) {
     RgbaImage cropped = {};
-    const RgbaImage* output = render_canvas_select_output(image, options, forced_crop, &cropped);
-    PngEncodeOptions encode_options = png_encode_options_for(options->png_compression);
-    int result = image_encode_png32_file(output_path, output->pixels, (unsigned)output->width,
-                                         (unsigned)output->height, &encode_options);
+    const RgbaImage* output = render_canvas_select_output(request->image, request->options,
+                                                          request->forced_crop, &cropped);
+    PngEncodeOptions encode_options = png_encode_options_for(request->options->png_compression);
+    int result = image_encode_png32_file(request->output_path, output->pixels,
+                                         (unsigned)output->width, (unsigned)output->height,
+                                         &encode_options);
     rgba_image_free(&cropped);
     if (result != 0) {
-        ZF_LOGE("could not write PNG: %s", output_path);
+        ZF_LOGE("could not write PNG: %s", request->output_path);
         return -1;
     }
     return 0;
@@ -265,11 +274,23 @@ static void dump_expression(int slot_index,
     RgbaImage image = {};
     int result = path_join(context->output_dir, file_name, output_path, sizeof(output_path));
     if (result == 0) {
-        result = render_image_dispatch(context->backend, skeleton, context->atlas, context->atlas_dir,
-                                       context->pages, &context->options->render, &image);
+        result = render_image_dispatch(&(RenderImageDispatchRequest){
+                                           .backend = context->backend,
+                                           .skeleton = skeleton,
+                                           .atlas = context->atlas,
+                                           .atlas_dir = context->atlas_dir,
+                                           .pages = context->pages,
+                                           .options = &context->options->render,
+                                       },
+                                       &image);
     }
     if (result == 0) {
-        result = write_png_image(&image, &context->options->render, NULL, output_path);
+        result = write_png_image(&(WritePngRequest){
+            .image = &image,
+            .options = &context->options->render,
+            .forced_crop = NULL,
+            .output_path = output_path,
+        });
     }
     rgba_image_free(&image);
     if (result == 0) {
@@ -461,8 +482,15 @@ static int compute_animation_crop(spSkeletonData* data,
         }
 
         RgbaImage image = {};
-        int result = render_image_dispatch(backend, skeleton, atlas, atlas_dir, pages,
-                                           &options->render, &image);
+        int result = render_image_dispatch(&(RenderImageDispatchRequest){
+                                               .backend = backend,
+                                               .skeleton = skeleton,
+                                               .atlas = atlas,
+                                               .atlas_dir = atlas_dir,
+                                               .pages = pages,
+                                               .options = &options->render,
+                                           },
+                                           &image);
         spSkeleton_dispose(skeleton);
         if (result != 0) {
             return -1;
@@ -568,8 +596,15 @@ static int dump_one_animation(spSkeletonData* data,
 
             RgbaImage image = {};
             RgbaImage cropped = {};
-            result = render_image_dispatch(backend, skeleton, atlas, atlas_dir, pages,
-                                           &options->render, &image);
+            result = render_image_dispatch(&(RenderImageDispatchRequest){
+                                           .backend = backend,
+                                           .skeleton = skeleton,
+                                           .atlas = atlas,
+                                           .atlas_dir = atlas_dir,
+                                           .pages = pages,
+                                           .options = &options->render,
+                                       },
+                                       &image);
             spSkeleton_dispose(skeleton);
             if (result != 0) {
                 break;
@@ -636,11 +671,23 @@ static int dump_one_animation(spSkeletonData* data,
         RgbaImage image = {};
         int result = path_join(frame_dir, file_name, output_path, sizeof(output_path));
         if (result == 0) {
-            result = render_image_dispatch(backend, skeleton, atlas, atlas_dir, pages,
-                                           &options->render, &image);
+            result = render_image_dispatch(&(RenderImageDispatchRequest){
+                                           .backend = backend,
+                                           .skeleton = skeleton,
+                                           .atlas = atlas,
+                                           .atlas_dir = atlas_dir,
+                                           .pages = pages,
+                                           .options = &options->render,
+                                       },
+                                       &image);
         }
         if (result == 0) {
-            result = write_png_image(&image, &options->render, forced_crop, output_path);
+            result = write_png_image(&(WritePngRequest){
+                .image = &image,
+                .options = &options->render,
+                .forced_crop = forced_crop,
+                .output_path = output_path,
+            });
         }
         rgba_image_free(&image);
         if (result != 0) {
