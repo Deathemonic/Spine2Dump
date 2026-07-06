@@ -24,6 +24,7 @@ set(COMMON_SOURCES
     src/render/image_io.c
     src/render/media_encoder.c
     src/render/gl_context.c
+    src/render/gfx_impl.c
     src/render/gpu_backend.c
     src/utils/asset_bundle.c
     src/utils/display.c
