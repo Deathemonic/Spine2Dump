@@ -97,7 +97,6 @@ function(add_external_ffmpeg)
         --disable-doc
         --disable-programs
         --disable-avdevice
-        --disable-postproc
         --disable-network
         --disable-everything
         --disable-audiotoolbox
