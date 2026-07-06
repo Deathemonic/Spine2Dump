@@ -29,6 +29,7 @@ typedef struct RenderOptions {
     int trim_padding;
     unsigned char alpha_threshold;
     PngCompressionPreset png_compression;
+    int software;
 } RenderOptions;
 
 static inline RenderOptions render_options_default(void) {
@@ -40,6 +41,7 @@ static inline RenderOptions render_options_default(void) {
         .trim_padding = 0,
         .alpha_threshold = 1,
         .png_compression = PNG_COMPRESSION_BALANCED,
+        .software = 0,
     };
     return options;
 }

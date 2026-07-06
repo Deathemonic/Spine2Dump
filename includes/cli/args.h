@@ -41,8 +41,9 @@ typedef struct {
     struct arg_str* compression;
     struct arg_str* format;
     struct arg_str* codec;
+    struct arg_lit* software;
     struct arg_end* end;
-    void* table[21];
+    void* table[22];
 } DumpArgs;
 
 RootArgs cli_root_args(void);

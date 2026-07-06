@@ -190,6 +190,7 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
             parse_codec(args.codec->count > 0 ? args.codec->sval[0] : NULL, &options->codec) != 0) {
             errors = 1;
         }
+        options->render.software = args.software->count > 0;
         if (options->trim_mode != RENDER_TRIM_NONE) {
             options->render.trim = 1;
         }
