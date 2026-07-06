@@ -31,7 +31,7 @@ jobs:
 
       - name: Install Ninja (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build clang nasm libomp-dev libgl1-mesa-dev libegl1-mesa-dev zlib1g-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang nasm libomp-dev libgl-dev libegl-dev mesa-common-dev libgl1-mesa-dri zlib1g-dev
 
       - name: Install Ninja (macOS)
         if: runner.os == 'macOS'
