@@ -23,6 +23,7 @@ set(COMMON_SOURCES
     src/render/software_rasterizer.c
     src/render/image_io.c
     src/render/media_encoder.c
+    src/render/gl_context.c
     src/utils/asset_bundle.c
     src/utils/display.c
     src/utils/file.c
@@ -45,6 +46,13 @@ target_include_directories(spine2dump SYSTEM PRIVATE
 enable_project_warnings(spine2dump)
 enable_clang_tidy(spine2dump)
 target_link_libraries(spine2dump PRIVATE argtable3 zf_log fort spng_static uv_a OpenMP::OpenMP_C)
+if(WIN32)
+    target_link_libraries(spine2dump PRIVATE opengl32 gdi32 user32)
+elseif(APPLE)
+    target_link_libraries(spine2dump PRIVATE "-framework OpenGL")
+else()
+    target_link_libraries(spine2dump PRIVATE EGL GL)
+endif()
 if(TARGET FFmpeg::FFmpeg)
     target_compile_definitions(spine2dump PRIVATE HAVE_FFMPEG=1)
     target_link_libraries(spine2dump PRIVATE FFmpeg::FFmpeg)
