@@ -6,6 +6,7 @@ set(SPINE_VERSIONS
 )
 option(ENABLE_CLANG_TIDY "Run clang-tidy on project C sources during builds" OFF)
 option(ENABLE_WARNINGS_AS_ERRORS "Treat project warnings as build errors" OFF)
+option(STATIC_LINUX "Statically link the Linux executable where supported" OFF)
 option(ENABLE_FFMPEG "Enable in-process FFmpeg media export" ON)
 option(ENABLE_GPL_CODECS "Enable GPL FFmpeg codecs such as x264 when building FFmpeg" OFF)
 option(FETCHCONTENT_UPDATES_DISCONNECTED
