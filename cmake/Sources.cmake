@@ -26,6 +26,7 @@ set(COMMON_SOURCES
     src/render/gl_context.c
     src/render/gfx_impl.c
     src/render/gpu_backend.c
+    src/render/gpu_frame.c
     src/render/gpu_pipeline.c
     src/utils/asset_bundle.c
     src/utils/display.c
