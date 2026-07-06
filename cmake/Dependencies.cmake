@@ -61,7 +61,30 @@ endfunction()
 
 function(add_external_ffmpeg)
     if(WIN32)
-        message(WARNING "External FFmpeg source builds need a Unix-like toolchain; set FFMPEG_ROOT to a prebuilt SDK on Windows.")
+        set(ffmpeg_version "8.1.2")
+        set(ffmpeg_prefix "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg/ffmpeg-${ffmpeg_version}-full_build-shared")
+        file(MAKE_DIRECTORY "${ffmpeg_prefix}/include" "${ffmpeg_prefix}/lib" "${ffmpeg_prefix}/bin")
+        ExternalProject_Add(ffmpeg_external
+            URL https://github.com/GyanD/codexffmpeg/releases/download/${ffmpeg_version}/ffmpeg-${ffmpeg_version}-full_build-shared.7z
+            SOURCE_DIR "${ffmpeg_prefix}"
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+            BUILD_BYPRODUCTS
+                "${ffmpeg_prefix}/lib/avformat.lib"
+                "${ffmpeg_prefix}/lib/avcodec.lib"
+                "${ffmpeg_prefix}/lib/avutil.lib"
+                "${ffmpeg_prefix}/lib/swscale.lib"
+        )
+
+        set(FFMPEG_ROOT "${ffmpeg_prefix}" CACHE PATH "Path to a prebuilt static FFmpeg SDK" FORCE)
+        set(FFMPEG_INCLUDE_DIR "${ffmpeg_prefix}/include")
+        set(FFMPEG_AVFORMAT_LIBRARY "${ffmpeg_prefix}/lib/avformat.lib")
+        set(FFMPEG_AVCODEC_LIBRARY "${ffmpeg_prefix}/lib/avcodec.lib")
+        set(FFMPEG_AVUTIL_LIBRARY "${ffmpeg_prefix}/lib/avutil.lib")
+        set(FFMPEG_SWSCALE_LIBRARY "${ffmpeg_prefix}/lib/swscale.lib")
+        add_ffmpeg_imported_target()
+        add_dependencies(FFmpeg::FFmpeg ffmpeg_external)
         return()
     endif()
 
@@ -79,6 +102,9 @@ function(add_external_ffmpeg)
         --disable-everything
         --disable-audiotoolbox
         --disable-iconv
+        --disable-libdrm
+        --disable-vaapi
+        --disable-vdpau
         --enable-avcodec
         --enable-avformat
         --enable-avutil
@@ -99,7 +125,7 @@ function(add_external_ffmpeg)
     endif()
 
     ExternalProject_Add(ffmpeg_external
-        URL https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz
+        URL https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz
         UPDATE_DISCONNECTED TRUE
         CONFIGURE_COMMAND <SOURCE_DIR>/configure ${ffmpeg_configure_args}
         BUILD_COMMAND make -j
