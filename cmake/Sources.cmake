@@ -38,6 +38,10 @@ set(VERSIONED_APP_SOURCES
 
 add_executable(spine2dump ${COMMON_SOURCES})
 target_include_directories(spine2dump PRIVATE ${INCLUDE_DIRS})
+target_include_directories(spine2dump SYSTEM PRIVATE
+    ${sokol_src_SOURCE_DIR}
+    ${sokol_gp_src_SOURCE_DIR}
+)
 enable_project_warnings(spine2dump)
 enable_clang_tidy(spine2dump)
 target_link_libraries(spine2dump PRIVATE argtable3 zf_log fort spng_static uv_a OpenMP::OpenMP_C)
