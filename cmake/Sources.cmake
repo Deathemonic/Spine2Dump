@@ -35,6 +35,7 @@ set(COMMON_SOURCES
 set(VERSIONED_APP_SOURCES
     src/core/spine_backend_impl.c
     src/render/cpu_renderer.c
+    src/render/gpu_renderer.c
     src/render/spine_slot_walk.c
 )
 
