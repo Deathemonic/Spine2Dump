@@ -165,6 +165,7 @@ function(prefix_header out_file prefix)
         cpu_renderer_render_png
         cpu_atlas_pages_load
         cpu_atlas_pages_free
+        spine_slot_walk
     )
 
     foreach(source IN LISTS ARGN)
