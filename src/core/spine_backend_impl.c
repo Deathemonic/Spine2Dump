@@ -148,6 +148,10 @@ static GpuBackend* try_gpu_init(const RenderOptions* options, const CpuAtlasPage
     return backend;
 }
 
+static int should_use_gpu_for_output(const RenderOptions* render, RenderOutputKind output) {
+    return !render->software && output != RENDER_OUTPUT_IMAGE;
+}
+
 static int render_image_dispatch(GpuBackend* backend,
                                  spSkeleton* skeleton,
                                  spAtlas* atlas,
@@ -387,7 +391,7 @@ int spine_backend_dump_expressions(const char* skel_path,
         spAtlas_dispose(atlas);
         return -1;
     }
-    GpuBackend* backend = try_gpu_init(&options->render, pages);
+    GpuBackend* backend = NULL;
 
     DumpExpressionsContext context = {
         .data = data,
@@ -519,7 +523,9 @@ static int dump_one_animation(spSkeletonData* data,
         ZF_LOGE("could not load atlas pages for %s", animation->name);
         return -1;
     }
-    GpuBackend* backend = try_gpu_init(&options->render, pages);
+    GpuBackend* backend = should_use_gpu_for_output(&options->render, options->output)
+                              ? try_gpu_init(&options->render, pages)
+                              : NULL;
     int gpu_active = backend != NULL;
 
     RenderCropRect animation_crop = {};
