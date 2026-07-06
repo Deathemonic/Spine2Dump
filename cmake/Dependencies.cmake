@@ -22,6 +22,14 @@ function(add_ffmpeg_imported_target)
         target_link_libraries(FFmpeg::FFmpeg INTERFACE bcrypt secur32 ws2_32)
     else()
         target_link_libraries(FFmpeg::FFmpeg INTERFACE m z)
+        if(APPLE)
+            target_link_libraries(FFmpeg::FFmpeg INTERFACE
+                "-framework VideoToolbox"
+                "-framework CoreVideo"
+                "-framework CoreMedia"
+                "-framework CoreFoundation"
+            )
+        endif()
     endif()
 endfunction()
 
@@ -69,7 +77,6 @@ function(add_external_ffmpeg)
         --disable-postproc
         --disable-network
         --disable-everything
-        --disable-videotoolbox
         --disable-audiotoolbox
         --disable-iconv
         --enable-avcodec
