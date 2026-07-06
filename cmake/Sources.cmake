@@ -57,13 +57,6 @@ elseif(APPLE)
 else()
     target_link_libraries(spine2dump PRIVATE EGL GL)
 endif()
-if(STATIC_LINUX)
-    if(WIN32 OR APPLE)
-        message(WARNING "STATIC_LINUX is only supported for Linux builds and will be ignored.")
-    else()
-        target_link_options(spine2dump PRIVATE -static)
-    endif()
-endif()
 if(TARGET FFmpeg::FFmpeg)
     target_compile_definitions(spine2dump PRIVATE HAVE_FFMPEG=1)
     target_link_libraries(spine2dump PRIVATE FFmpeg::FFmpeg)
@@ -72,3 +65,53 @@ endif()
 foreach(spine_version IN LISTS SPINE_VERSIONS)
     add_embedded_runtime(${spine_version})
 endforeach()
+
+install(TARGETS spine2dump RUNTIME DESTINATION bin COMPONENT Runtime)
+if(APPLE)
+    set_target_properties(spine2dump PROPERTIES INSTALL_RPATH "@executable_path")
+elseif(UNIX)
+    set_target_properties(spine2dump PROPERTIES INSTALL_RPATH "$ORIGIN")
+endif()
+
+set(bundle_search_dirs "")
+get_filename_component(bundle_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
+list(APPEND bundle_search_dirs "${bundle_compiler_dir}")
+if(NOT FFMPEG_ROOT STREQUAL "")
+    list(APPEND bundle_search_dirs "${FFMPEG_ROOT}/bin" "${FFMPEG_ROOT}/lib")
+endif()
+foreach(bundle_omp_lib IN LISTS OpenMP_C_LIBRARIES OpenMP_omp_LIBRARY)
+    if(bundle_omp_lib)
+        get_filename_component(bundle_omp_dir "${bundle_omp_lib}" DIRECTORY)
+        list(APPEND bundle_search_dirs "${bundle_omp_dir}")
+    endif()
+endforeach()
+list(REMOVE_DUPLICATES bundle_search_dirs)
+
+install(CODE "set(bundle_exe \"$<TARGET_FILE:spine2dump>\")" COMPONENT Runtime)
+install(CODE "set(bundle_search_dirs \"${bundle_search_dirs}\")" COMPONENT Runtime)
+install(CODE [[
+    file(GET_RUNTIME_DEPENDENCIES
+        EXECUTABLES "${bundle_exe}"
+        RESOLVED_DEPENDENCIES_VAR bundle_resolved
+        UNRESOLVED_DEPENDENCIES_VAR bundle_unresolved
+        DIRECTORIES ${bundle_search_dirs}
+        PRE_EXCLUDE_REGEXES "api-ms-win-.*" "ext-ms-.*"
+        POST_EXCLUDE_REGEXES
+            ".*[/\\]system32[/\\].*"
+            "^/lib/.*"
+            "^/usr/lib/(x86_64|aarch64)-linux-gnu/.*"
+            "^/System/Library/.*"
+            "^/usr/lib/libSystem.*"
+    )
+    foreach(bundle_dep IN LISTS bundle_resolved)
+        file(INSTALL
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
+            TYPE SHARED_LIBRARY
+            FOLLOW_SYMLINK_CHAIN
+            FILES "${bundle_dep}"
+        )
+    endforeach()
+    foreach(bundle_dep IN LISTS bundle_unresolved)
+        message(STATUS "Unresolved runtime dependency left to system: ${bundle_dep}")
+    endforeach()
+]] COMPONENT Runtime)
