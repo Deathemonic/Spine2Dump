@@ -19,19 +19,6 @@
 #include "software_rasterizer.h"
 #include "spine_compat.h"
 
-typedef struct {
-    char* name;
-    unsigned char* pixels;
-    int width;
-    int height;
-    int channels;
-} LoadedPage;
-
-struct CpuAtlasPages {
-    LoadedPage* items;
-    int count;
-};
-
 static void free_pages(LoadedPage* pages, int count) {
     for (int i = 0; i < count; i++) {
         free(pages[i].name);
