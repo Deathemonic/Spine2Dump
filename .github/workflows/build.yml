@@ -50,6 +50,7 @@ jobs:
             mingw-w64-clang-x86_64-cmake
             mingw-w64-clang-x86_64-clang
             mingw-w64-clang-x86_64-ninja
+            mingw-w64-clang-x86_64-llvm-openmp
 
       - name: Build (Linux)
         if: runner.os == 'Linux'
@@ -104,19 +105,24 @@ jobs:
         if: runner.os == 'macOS'
         run: cmake --build build --config Release
 
-      - name: Upload Artifact
-        if: matrix.config.static
+      - name: Upload Artifact (Linux)
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: spine2dump-${{ matrix.config.name }}
           path: build/${{ matrix.config.binary }}
 
-      - name: Install Artifact
-        if: ${{ !matrix.config.static }}
+      - name: Install Artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
         run: cmake --install build --prefix dist --component Runtime
 
-      - name: Upload Artifact
-        if: ${{ !matrix.config.static }}
+      - name: Install Artifact (macOS)
+        if: runner.os == 'macOS'
+        run: cmake --install build --prefix dist --component Runtime
+
+      - name: Upload Artifact (Windows/macOS)
+        if: runner.os != 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: spine2dump-${{ matrix.config.name }}
@@ -150,17 +156,22 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify && runner.os == 'Linux' }}
         run: |
           chmod +x verify/${{ matrix.config.binary }}
+          docker run --rm -v "$PWD/verify:/app:ro" ubuntu:24.04 sh -c 'ldd /app/${{ matrix.config.binary }} || true'
           docker run --rm -v "$PWD/verify:/app:ro" ubuntu:24.04 /app/${{ matrix.config.binary }} --help
 
       - name: Verify (Windows)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify && runner.os == 'Windows' }}
-        shell: pwsh
-        run: .\verify\${{ matrix.config.binary }} --help
+        shell: bash
+        run: |
+          ls -l verify
+          ldd verify/${{ matrix.config.binary }} || true
+          ./verify/${{ matrix.config.binary }} --help
 
       - name: Verify (macOS)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify && runner.os == 'macOS' }}
         run: |
           chmod +x verify/${{ matrix.config.binary }}
+          otool -L verify/${{ matrix.config.binary }}
           ./verify/${{ matrix.config.binary }} --help
 
   deploy:

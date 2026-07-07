@@ -94,7 +94,7 @@ foreach(bundle_omp_lib IN LISTS OpenMP_C_LIBRARIES OpenMP_omp_LIBRARY)
 endforeach()
 list(REMOVE_DUPLICATES bundle_search_dirs)
 
-if(NOT STATIC)
+if(NOT STATIC OR MINGW)
     install(CODE "set(bundle_exe \"$<TARGET_FILE:spine2dump>\")" COMPONENT Runtime)
     install(CODE "set(bundle_search_dirs \"${bundle_search_dirs}\")" COMPONENT Runtime)
     install(CODE [[
