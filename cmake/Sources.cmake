@@ -67,6 +67,14 @@ endif()
 if(TARGET FFmpeg::FFmpeg)
     target_compile_definitions(spine2dump PRIVATE HAVE_FFMPEG=1)
     target_link_libraries(spine2dump PRIVATE FFmpeg::FFmpeg)
+    if(WIN32 AND NOT FFMPEG_ROOT STREQUAL "")
+        add_custom_command(TARGET spine2dump POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${FFMPEG_ROOT}/bin"
+                "$<TARGET_FILE_DIR:spine2dump>"
+            VERBATIM
+        )
+    endif()
 endif()
 
 foreach(spine_version IN LISTS SPINE_VERSIONS)

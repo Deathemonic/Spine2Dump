@@ -312,7 +312,7 @@ int spine_backend_inspect(const char* skel_path, const char* atlas_path) {
     }
 
     char title[128];
-    snprintf(title, sizeof(title), "spine-c %s load result", RUNTIME_VERSION);
+    snprintf(title, sizeof(title), "Spine2D %s load result", RUNTIME_VERSION);
     DisplayTable* kv = display_kv_create(title);
     display_kv_row(kv, "skeleton", skel_path);
     display_kv_row(kv, "atlas", atlas_path);

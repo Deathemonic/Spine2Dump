@@ -18,6 +18,9 @@ function(add_ffmpeg_imported_target)
         "${FFMPEG_SWSCALE_LIBRARY}"
         "${FFMPEG_AVUTIL_LIBRARY}"
     )
+    if(ENABLE_GPL_CODECS)
+        target_link_libraries(FFmpeg::FFmpeg INTERFACE x264)
+    endif()
     if(WIN32)
         target_link_libraries(FFmpeg::FFmpeg INTERFACE bcrypt secur32 ws2_32)
     else()
@@ -121,6 +124,7 @@ function(add_external_ffmpeg)
         --enable-avformat
         --enable-avutil
         --enable-swscale
+        --enable-protocol=file
         --enable-encoder=mpeg4
         --enable-encoder=ffv1
         --enable-encoder=gif
@@ -132,7 +136,6 @@ function(add_external_ffmpeg)
             --enable-gpl
             --enable-libx264
             --enable-encoder=libx264
-            --enable-encoder=h264
         )
     endif()
 

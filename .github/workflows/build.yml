@@ -52,6 +52,8 @@ jobs:
             mingw-w64-clang-x86_64-clang
             mingw-w64-clang-x86_64-ninja
             mingw-w64-clang-x86_64-llvm-openmp
+            mingw-w64-clang-x86_64-pkgconf
+            mingw-w64-clang-x86_64-x264
 
       - name: Build (Linux musl)
         if: runner.os == 'Linux' && matrix.config.libc == 'musl'
@@ -112,7 +114,8 @@ jobs:
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DSTATIC=ON \
-            -DFFMPEG_PROVIDER=external
+            -DFFMPEG_PROVIDER=external \
+            -DENABLE_GPL_CODECS=ON
 
       - name: Configure (macOS)
         if: runner.os == 'macOS'
