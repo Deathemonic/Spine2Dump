@@ -22,6 +22,7 @@ jobs:
     name: Build for ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     strategy:
+      fail-fast: false
       matrix:
         config:
           - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump, static: true }
@@ -49,7 +50,6 @@ jobs:
             mingw-w64-clang-x86_64-cmake
             mingw-w64-clang-x86_64-clang
             mingw-w64-clang-x86_64-ninja
-            mingw-w64-clang-x86_64-openmp
 
       - name: Build (Linux)
         if: runner.os == 'Linux'
@@ -126,6 +126,7 @@ jobs:
     needs: [build]
     runs-on: ${{ matrix.config.os }}
     strategy:
+      fail-fast: false
       matrix:
         config:
           - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump }
