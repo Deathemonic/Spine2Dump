@@ -125,12 +125,9 @@ struct GlContext {
 
 GlContext* gl_context_create(void) {
     CGLPixelFormatAttribute attributes[] = {
-        kCGLPFAOpenGLProfile,
-        (CGLPixelFormatAttribute)kCGLOGLPVersion_3_2_Core,
-        kCGLPFAAccelerated,
-        kCGLPFAColorSize,
-        (CGLPixelFormatAttribute)24,
-        (CGLPixelFormatAttribute)0,
+        kCGLPFAOpenGLProfile,        (CGLPixelFormatAttribute)kCGLOGLPVersion_3_2_Core,
+        kCGLPFAAccelerated,          kCGLPFAColorSize,
+        (CGLPixelFormatAttribute)24, (CGLPixelFormatAttribute)0,
     };
     CGLPixelFormatObj pixel_format = NULL;
     GLint format_count = 0;

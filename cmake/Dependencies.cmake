@@ -163,7 +163,9 @@ endfunction()
 
 if(ENABLE_FFMPEG AND NOT FFMPEG_PROVIDER STREQUAL "off")
     set(ffmpeg_found FALSE)
-    find_root_ffmpeg(ffmpeg_found)
+    if(NOT FFMPEG_PROVIDER STREQUAL "external")
+        find_root_ffmpeg(ffmpeg_found)
+    endif()
     if(NOT ffmpeg_found AND (FFMPEG_PROVIDER STREQUAL "external" OR
                              (FFMPEG_PROVIDER STREQUAL "auto" AND STATIC)))
         add_external_ffmpeg()

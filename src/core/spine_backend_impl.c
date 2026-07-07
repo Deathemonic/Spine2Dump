@@ -512,6 +512,28 @@ static int compute_animation_crop(spSkeletonData* data,
     return 0;
 }
 
+static void make_crop_size_even(RenderCropRect* crop, int canvas_width, int canvas_height) {
+    if (crop == NULL || !crop->valid) {
+        return;
+    }
+    if ((crop->width % 2) != 0) {
+        if (crop->x + crop->width < canvas_width) {
+            crop->width++;
+        } else if (crop->x > 0) {
+            crop->x--;
+            crop->width++;
+        }
+    }
+    if ((crop->height % 2) != 0) {
+        if (crop->y + crop->height < canvas_height) {
+            crop->height++;
+        } else if (crop->y > 0) {
+            crop->y--;
+            crop->height++;
+        }
+    }
+}
+
 static spAnimation* find_animation_by_name(spSkeletonData* data, const char* name) {
     for (int i = 0; i < data->animationsCount; i++) {
         if (strcmp(data->animations[i]->name, name) == 0) {
@@ -569,6 +591,9 @@ static int dump_one_animation(spSkeletonData* data,
         gpu_backend_shutdown(backend);
         cpu_atlas_pages_free(pages);
         return -1;
+    }
+    if (options->output == RENDER_OUTPUT_VIDEO) {
+        make_crop_size_even(&animation_crop, options->render.width, options->render.height);
     }
 
     if (options->output != RENDER_OUTPUT_IMAGE) {
