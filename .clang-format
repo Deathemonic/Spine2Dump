@@ -17,7 +17,7 @@ ColumnLimit: 100
 
 # Alignment
 AlignAfterOpenBracket: Align
-AlignArrayOfStructures: Left
+AlignArrayOfStructures: None
 AlignConsecutiveAssignments: None
 AlignConsecutiveBitFields: None
 AlignConsecutiveDeclarations: None
@@ -91,13 +91,17 @@ IncludeCategories:
   - Regex: '^<(assert|complex|ctype|errno|fenv|float|inttypes|limits|locale|math|setjmp|signal|stdarg|stddef|stdint|stdio|stdlib|string|time|uchar|wchar|wctype)\.h>$'
     Priority: 1
   # Other system headers
-  - Regex: '^<.*\.h>$'
+  - Regex: '^<windows\.h>$'
     Priority: 2
-  - Regex: '^<.*>$'
+  - Regex: '^<GL/.*\.h>$'
     Priority: 3
+  - Regex: '^<.*\.h>$'
+    Priority: 4
+  - Regex: '^<.*>$'
+    Priority: 5
   # Project headers
   - Regex: '^".*"$'
-    Priority: 4
+    Priority: 6
 
 # Penalties for breaking (lower = preferred)
 PenaltyBreakAssignment: 100

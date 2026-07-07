@@ -107,10 +107,10 @@ static void cpu_sink(const SlotWalkTriangle* triangle, void* user) {
         .target = context->canvas,
         .texture =
             {
-                      .pixels = page->pixels,
-                      .width = page->width,
-                      .height = page->height,
-                      },
+                .pixels = page->pixels,
+                .width = page->width,
+                .height = page->height,
+            },
         .vertices = triangle->vertices,
         .uvs = triangle->uvs,
         .triangle = triangle->triangle,

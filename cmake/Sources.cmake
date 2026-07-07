@@ -33,6 +33,7 @@ set(COMMON_SOURCES
     src/utils/file.c
     src/utils/log.c
     src/utils/path.c
+    src/utils/termcolor.c
 )
 
 set(VERSIONED_APP_SOURCES

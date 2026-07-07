@@ -6,6 +6,8 @@
 
 #include <zf_log/zf_log.h>
 
+#include "termcolor.h"
+
 static const char* log_level_tag(const zf_log_message* msg) {
     if (msg->lvl == ZF_LOG_INFO && msg->tag != NULL && strcmp(msg->tag, "SUCCESS") == 0) {
         return "[SUCCESS]";
@@ -43,7 +45,13 @@ static void log_output_callback(const zf_log_message* msg, void* arg) {
     strftime(timestamp, sizeof(timestamp), "%H:%M:%S", &local);
 
     *msg->p = '\0';
-    fprintf(stderr, "%s %9s %s\n", timestamp, log_level_tag(msg), msg->msg_b);
+    const char* tag = log_level_tag(msg);
+    if (termcolor_stderr_enabled()) {
+        fprintf(stderr, "%s%s%s %s%9s%s %s\n", termcolor_timestamp(), timestamp, termcolor_reset(),
+                termcolor_for_log_tag(tag), tag, termcolor_reset(), msg->msg_b);
+    } else {
+        fprintf(stderr, "%s %9s %s\n", timestamp, tag, msg->msg_b);
+    }
     fflush(stderr);
 }
 

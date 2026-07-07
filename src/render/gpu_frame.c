@@ -152,17 +152,17 @@ int gpu_frame_submit(const GpuFrameSubmitRequest* request) {
         return -1;
     }
     GpuFrame* frame = request->frame;
-    if (frame->vertex_count > 0 && ensure_gpu_capacity(request->vertex_buffer,
-                                                       request->gpu_vertex_capacity,
-                                                       frame->vertex_count) != 0) {
+    if (frame->vertex_count > 0 &&
+        ensure_gpu_capacity(request->vertex_buffer, request->gpu_vertex_capacity,
+                            frame->vertex_count) != 0) {
         return -1;
     }
     if (frame->vertex_count > 0) {
-        sg_update_buffer(*request->vertex_buffer, &(sg_range){
-                                                    .ptr = frame->vertices,
-                                                    .size = (size_t)frame->vertex_count *
-                                                            sizeof(*frame->vertices),
-                                                });
+        sg_update_buffer(*request->vertex_buffer,
+                         &(sg_range){
+                             .ptr = frame->vertices,
+                             .size = (size_t)frame->vertex_count * sizeof(*frame->vertices),
+                         });
     }
     for (int i = 0; i < frame->batch_count; i++) {
         GpuBatch* batch = &frame->batches[i];

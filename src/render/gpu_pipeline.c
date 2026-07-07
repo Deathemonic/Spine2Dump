@@ -58,7 +58,8 @@ static sg_shader make_shader(void) {
                           "out vec2 uv;\n"
                           "out vec4 color;\n"
                           "void main() {\n"
-                          "  gl_Position = vec4(position.x * 2.0 - 1.0, 1.0 - position.y * 2.0, 0.0, 1.0);\n"
+                          "  gl_Position = vec4(position.x * 2.0 - 1.0, 1.0 - position.y * 2.0, "
+                          "0.0, 1.0);\n"
                           "  uv = texcoord;\n"
                           "  color = color0;\n"
                           "}\n",
@@ -83,8 +84,7 @@ static sg_shader make_shader(void) {
         .views[0].texture = {.stage = SG_SHADERSTAGE_FRAGMENT,
                              .image_type = SG_IMAGETYPE_2D,
                              .sample_type = SG_IMAGESAMPLETYPE_FLOAT},
-        .samplers[0] = {.stage = SG_SHADERSTAGE_FRAGMENT,
-                        .sampler_type = SG_SAMPLERTYPE_FILTERING},
+        .samplers[0] = {.stage = SG_SHADERSTAGE_FRAGMENT, .sampler_type = SG_SAMPLERTYPE_FILTERING},
         .texture_sampler_pairs[0] = {.stage = SG_SHADERSTAGE_FRAGMENT,
                                      .view_slot = 0,
                                      .sampler_slot = 0,

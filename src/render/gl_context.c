@@ -4,8 +4,9 @@
 
 #if defined(_WIN32)
 
-#include <windows.h>
-#include <GL/gl.h>
+    #include <windows.h>
+
+    #include <GL/gl.h>
 
 struct GlContext {
     HWND window;
@@ -13,10 +14,10 @@ struct GlContext {
     HGLRC rc;
 };
 
-#define WGL_CONTEXT_MAJOR_VERSION_ARB 0x2091
-#define WGL_CONTEXT_MINOR_VERSION_ARB 0x2092
-#define WGL_CONTEXT_PROFILE_MASK_ARB 0x9126
-#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB 0x0001
+    #define WGL_CONTEXT_MAJOR_VERSION_ARB 0x2091
+    #define WGL_CONTEXT_MINOR_VERSION_ARB 0x2092
+    #define WGL_CONTEXT_PROFILE_MASK_ARB 0x9126
+    #define WGL_CONTEXT_CORE_PROFILE_BIT_ARB 0x0001
 
 typedef HGLRC(WINAPI* wglCreateContextAttribsARBProc)(HDC, HGLRC, const int*);
 
@@ -28,7 +29,7 @@ GlContext* gl_context_create(void) {
     };
     RegisterClassA(&wc);
     HWND window = CreateWindowA(wc.lpszClassName, "", WS_OVERLAPPEDWINDOW, 0, 0, 1, 1, NULL, NULL,
-                               wc.hInstance, NULL);
+                                wc.hInstance, NULL);
     if (window == NULL) {
         return NULL;
     }
@@ -46,8 +47,8 @@ GlContext* gl_context_create(void) {
 
     HGLRC dummy = wglCreateContext(dc);
     wglMakeCurrent(dc, dummy);
-    wglCreateContextAttribsARBProc create_attribs =
-        (wglCreateContextAttribsARBProc)wglGetProcAddress("wglCreateContextAttribsARB");
+    wglCreateContextAttribsARBProc create_attribs = (wglCreateContextAttribsARBProc)
+        wglGetProcAddress("wglCreateContextAttribsARB");
     if (create_attribs == NULL) {
         wglMakeCurrent(NULL, NULL);
         wglDeleteContext(dummy);
@@ -57,8 +58,13 @@ GlContext* gl_context_create(void) {
     }
 
     int attribs[] = {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 3, WGL_CONTEXT_MINOR_VERSION_ARB, 3,
-        WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB, 0,
+        WGL_CONTEXT_MAJOR_VERSION_ARB,
+        3,
+        WGL_CONTEXT_MINOR_VERSION_ARB,
+        3,
+        WGL_CONTEXT_PROFILE_MASK_ARB,
+        WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        0,
     };
     HGLRC rc = create_attribs(dc, NULL, attribs);
     wglMakeCurrent(NULL, NULL);
@@ -110,8 +116,8 @@ void* gl_context_get_proc(const char* name) {
 
 #elif defined(__APPLE__)
 
-#include <OpenGL/OpenGL.h>
-#include <dlfcn.h>
+    #include <OpenGL/OpenGL.h>
+    #include <dlfcn.h>
 
 struct GlContext {
     CGLContextObj context;
@@ -170,8 +176,8 @@ void* gl_context_get_proc(const char* name) {
 
 #else
 
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
+    #include <EGL/egl.h>
+    #include <EGL/eglext.h>
 
 struct GlContext {
     EGLDisplay display;
@@ -247,21 +253,21 @@ void* gl_context_get_proc(const char* name) {
 #endif
 
 #if defined(_WIN32)
-#include <GL/gl.h>
+    #include <GL/gl.h>
 #elif defined(__APPLE__)
-#include <OpenGL/gl3.h>
+    #include <OpenGL/gl3.h>
 #else
-#include <GL/gl.h>
+    #include <GL/gl.h>
 #endif
 
 #ifndef APIENTRY
-#define APIENTRY
+    #define APIENTRY
 #endif
 #ifndef GL_FRAMEBUFFER
-#define GL_FRAMEBUFFER 0x8D40
+    #define GL_FRAMEBUFFER 0x8D40
 #endif
 #ifndef GL_COLOR_ATTACHMENT0
-#define GL_COLOR_ATTACHMENT0 0x8CE0
+    #define GL_COLOR_ATTACHMENT0 0x8CE0
 #endif
 
 typedef void(APIENTRY* GlGenFramebuffers)(GLsizei, GLuint*);
@@ -274,13 +280,14 @@ int gl_context_read_rgba(unsigned int gl_texture,
                          int width,
                          int height,
                          unsigned char* pixels) {
-    GlGenFramebuffers gen_framebuffers = (GlGenFramebuffers)gl_context_get_proc("glGenFramebuffers");
-    GlBindFramebuffer bind_framebuffer =
-        (GlBindFramebuffer)gl_context_get_proc("glBindFramebuffer");
-    GlFramebufferTexture2D framebuffer_texture =
-        (GlFramebufferTexture2D)gl_context_get_proc("glFramebufferTexture2D");
-    GlDeleteFramebuffers delete_framebuffers =
-        (GlDeleteFramebuffers)gl_context_get_proc("glDeleteFramebuffers");
+    GlGenFramebuffers gen_framebuffers = (GlGenFramebuffers)gl_context_get_proc(
+        "glGenFramebuffers");
+    GlBindFramebuffer bind_framebuffer = (GlBindFramebuffer)gl_context_get_proc(
+        "glBindFramebuffer");
+    GlFramebufferTexture2D framebuffer_texture = (GlFramebufferTexture2D)gl_context_get_proc(
+        "glFramebufferTexture2D");
+    GlDeleteFramebuffers delete_framebuffers = (GlDeleteFramebuffers)gl_context_get_proc(
+        "glDeleteFramebuffers");
     if (gen_framebuffers == NULL || bind_framebuffer == NULL || framebuffer_texture == NULL ||
         delete_framebuffers == NULL) {
         return -1;

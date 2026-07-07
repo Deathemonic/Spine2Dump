@@ -1,9 +1,10 @@
+#include "gpu_backend.h"
+
 #include <stdlib.h>
 #include <string.h>
 
 #include <sokol_gfx.h>
 
-#include "gpu_backend.h"
 #include "gl_context.h"
 #include "gpu_frame.h"
 #include "gpu_pipeline.h"
@@ -144,18 +145,17 @@ void gpu_backend_draw_triangle(GpuBackend* backend,
     if (backend == NULL) {
         return;
     }
-    gpu_frame_push_triangle(&backend->frame,
-                            &(GpuFrameTriangleRequest){
-                                .page_index = page_index,
-                                .image_count = backend->image_count,
-                                .width = backend->width,
-                                .height = backend->height,
-                                .vertices = vertices,
-                                .uvs = uvs,
-                                .triangle = triangle,
-                                .transform = transform,
-                                .shade = shade,
-                            });
+    gpu_frame_push_triangle(&backend->frame, &(GpuFrameTriangleRequest){
+                                                 .page_index = page_index,
+                                                 .image_count = backend->image_count,
+                                                 .width = backend->width,
+                                                 .height = backend->height,
+                                                 .vertices = vertices,
+                                                 .uvs = uvs,
+                                                 .triangle = triangle,
+                                                 .transform = transform,
+                                                 .shade = shade,
+                                             });
 }
 
 int gpu_backend_end_frame(GpuBackend* backend, RgbaImage* out) {

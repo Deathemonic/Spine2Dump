@@ -275,15 +275,16 @@ static void dump_expression(int slot_index,
     RgbaImage image = {};
     int result = path_join(context->output_dir, file_name, output_path, sizeof(output_path));
     if (result == 0) {
-        result = render_image_dispatch(&(RenderImageDispatchRequest){
-                                           .backend = context->backend,
-                                           .skeleton = skeleton,
-                                           .atlas = context->atlas,
-                                           .atlas_dir = context->atlas_dir,
-                                           .pages = context->pages,
-                                           .options = &context->options->render,
-                                       },
-                                       &image);
+        result = render_image_dispatch(
+            &(RenderImageDispatchRequest){
+                .backend = context->backend,
+                .skeleton = skeleton,
+                .atlas = context->atlas,
+                .atlas_dir = context->atlas_dir,
+                .pages = context->pages,
+                .options = &context->options->render,
+            },
+            &image);
     }
     if (result == 0) {
         result = write_png_image(&(WritePngRequest){
@@ -485,15 +486,16 @@ static int compute_animation_crop(spSkeletonData* data,
         }
 
         RgbaImage image = {};
-        int result = render_image_dispatch(&(RenderImageDispatchRequest){
-                                               .backend = backend,
-                                               .skeleton = skeleton,
-                                               .atlas = atlas,
-                                               .atlas_dir = atlas_dir,
-                                               .pages = pages,
-                                               .options = &options->render,
-                                           },
-                                           &image);
+        int result = render_image_dispatch(
+            &(RenderImageDispatchRequest){
+                .backend = backend,
+                .skeleton = skeleton,
+                .atlas = atlas,
+                .atlas_dir = atlas_dir,
+                .pages = pages,
+                .options = &options->render,
+            },
+            &image);
         spSkeleton_dispose(skeleton);
         if (result != 0) {
             return -1;
@@ -562,8 +564,8 @@ static int dump_one_animation(spSkeletonData* data,
     RenderCropRect animation_crop = {};
     if ((options->trim_mode == RENDER_TRIM_ANIMATION ||
          (options->output != RENDER_OUTPUT_IMAGE && options->render.trim)) &&
-        compute_animation_crop(data, atlas, atlas_dir, pages, backend, animation, options, start, end,
-                               frame_count, &animation_crop) != 0) {
+        compute_animation_crop(data, atlas, atlas_dir, pages, backend, animation, options, start,
+                               end, frame_count, &animation_crop) != 0) {
         gpu_backend_shutdown(backend);
         cpu_atlas_pages_free(pages);
         return -1;
@@ -599,15 +601,16 @@ static int dump_one_animation(spSkeletonData* data,
 
             RgbaImage image = {};
             RgbaImage cropped = {};
-            result = render_image_dispatch(&(RenderImageDispatchRequest){
-                                           .backend = backend,
-                                           .skeleton = skeleton,
-                                           .atlas = atlas,
-                                           .atlas_dir = atlas_dir,
-                                           .pages = pages,
-                                           .options = &options->render,
-                                       },
-                                       &image);
+            result = render_image_dispatch(
+                &(RenderImageDispatchRequest){
+                    .backend = backend,
+                    .skeleton = skeleton,
+                    .atlas = atlas,
+                    .atlas_dir = atlas_dir,
+                    .pages = pages,
+                    .options = &options->render,
+                },
+                &image);
             spSkeleton_dispose(skeleton);
             if (result != 0) {
                 break;
@@ -650,7 +653,7 @@ static int dump_one_animation(spSkeletonData* data,
     path_make_dirs(frame_dir);
 
     int failed = 0;
-#pragma omp parallel for schedule(dynamic) if(!gpu_active)
+#pragma omp parallel for schedule(dynamic) if (!gpu_active)
     for (int frame = 0; frame < frame_count; frame++) {
         if (failed) {
             continue;
@@ -674,15 +677,16 @@ static int dump_one_animation(spSkeletonData* data,
         RgbaImage image = {};
         int result = path_join(frame_dir, file_name, output_path, sizeof(output_path));
         if (result == 0) {
-            result = render_image_dispatch(&(RenderImageDispatchRequest){
-                                           .backend = backend,
-                                           .skeleton = skeleton,
-                                           .atlas = atlas,
-                                           .atlas_dir = atlas_dir,
-                                           .pages = pages,
-                                           .options = &options->render,
-                                       },
-                                       &image);
+            result = render_image_dispatch(
+                &(RenderImageDispatchRequest){
+                    .backend = backend,
+                    .skeleton = skeleton,
+                    .atlas = atlas,
+                    .atlas_dir = atlas_dir,
+                    .pages = pages,
+                    .options = &options->render,
+                },
+                &image);
         }
         if (result == 0) {
             result = write_png_image(&(WritePngRequest){
