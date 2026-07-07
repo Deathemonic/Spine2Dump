@@ -101,6 +101,7 @@ function(add_external_ffmpeg)
     file(MAKE_DIRECTORY "${ffmpeg_prefix}/include" "${ffmpeg_prefix}/lib")
     set(ffmpeg_configure_args
         --prefix=${ffmpeg_prefix}
+        --cc=${CMAKE_C_COMPILER}
         --disable-shared
         --enable-static
         --disable-doc
