@@ -186,9 +186,9 @@ jobs:
           docker run --rm -v "$PWD/verify:/app:ro" ubuntu:24.04 bash -lc '
             export DEBIAN_FRONTEND=noninteractive &&
             apt-get update -qq &&
-            apt-get install -y --no-install-recommends libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri >/dev/null &&
+            apt-get install -y --no-install-recommends binutils libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri >/dev/null &&
             echo "== Dynamic dependencies ==" &&
-            ldd /app/${{ matrix.config.binary }} || true &&
+            readelf -d /app/${{ matrix.config.binary }} | grep NEEDED || true &&
             echo "== Run ==" &&
             /app/${{ matrix.config.binary }} --help
           '
@@ -198,9 +198,9 @@ jobs:
         run: |
           chmod +x verify/${{ matrix.config.binary }}
           docker run --rm -v "$PWD/verify:/app:ro" alpine:3.20 sh -lc '
-            apk add --no-cache mesa-egl mesa-gl mesa-dri-gallium libc6-compat >/dev/null &&
+            apk add --no-cache binutils mesa-egl mesa-gl mesa-dri-gallium libc6-compat >/dev/null &&
             echo "== Dynamic dependencies ==" &&
-            ldd /app/${{ matrix.config.binary }} || true &&
+            readelf -d /app/${{ matrix.config.binary }} | grep NEEDED || true &&
             echo "== Run ==" &&
             /app/${{ matrix.config.binary }} --help
           '
@@ -210,14 +210,24 @@ jobs:
         shell: bash
         run: |
           ls -l verify
-          ldd verify/${{ matrix.config.binary }} || true
+          echo "== Dynamic dependencies =="
+          if command -v objdump >/dev/null; then
+            objdump -p verify/${{ matrix.config.binary }} | grep "DLL Name" || true
+          elif command -v llvm-objdump >/dev/null; then
+            llvm-objdump -p verify/${{ matrix.config.binary }} | grep "DLL Name" || true
+          else
+            echo "No PE dependency dumper found."
+          fi
+          echo "== Run =="
           ./verify/${{ matrix.config.binary }} --help
 
       - name: Verify (macOS)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify && runner.os == 'macOS' }}
         run: |
           chmod +x verify/${{ matrix.config.binary }}
+          echo "== Dynamic dependencies =="
           otool -L verify/${{ matrix.config.binary }}
+          echo "== Run =="
           ./verify/${{ matrix.config.binary }} --help
 
   deploy:

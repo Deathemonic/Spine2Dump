@@ -268,6 +268,7 @@ typedef void(APIENTRY* GlGenFramebuffers)(GLsizei, GLuint*);
 typedef void(APIENTRY* GlBindFramebuffer)(GLenum, GLuint);
 typedef void(APIENTRY* GlFramebufferTexture2D)(GLenum, GLenum, GLenum, GLuint, GLint);
 typedef void(APIENTRY* GlDeleteFramebuffers)(GLsizei, const GLuint*);
+typedef void(APIENTRY* GlReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*);
 
 int gl_context_read_rgba(unsigned int gl_texture,
                          unsigned int tex_target,
@@ -281,8 +282,13 @@ int gl_context_read_rgba(unsigned int gl_texture,
         (GlFramebufferTexture2D)gl_context_get_proc("glFramebufferTexture2D");
     GlDeleteFramebuffers delete_framebuffers =
         (GlDeleteFramebuffers)gl_context_get_proc("glDeleteFramebuffers");
+#if defined(_WIN32) || defined(__APPLE__)
+    GlReadPixels read_pixels = glReadPixels;
+#else
+    GlReadPixels read_pixels = (GlReadPixels)gl_context_get_proc("glReadPixels");
+#endif
     if (gen_framebuffers == NULL || bind_framebuffer == NULL || framebuffer_texture == NULL ||
-        delete_framebuffers == NULL) {
+        delete_framebuffers == NULL || read_pixels == NULL) {
         return -1;
     }
 
@@ -291,7 +297,7 @@ int gl_context_read_rgba(unsigned int gl_texture,
     bind_framebuffer(GL_FRAMEBUFFER, framebuffer);
     framebuffer_texture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, (GLenum)tex_target,
                         (GLuint)gl_texture, 0);
-    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    read_pixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     bind_framebuffer(GL_FRAMEBUFFER, 0);
     delete_framebuffers(1, &framebuffer);
     return 0;

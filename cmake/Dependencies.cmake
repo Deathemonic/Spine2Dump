@@ -411,8 +411,9 @@ FetchContent_Declare(zlib_src
 )
 set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "Build zlib examples" FORCE)
 FetchContent_MakeAvailable(zlib_src)
-if(NOT TARGET ZLIB::ZLIB)
-    add_library(ZLIB::ZLIB ALIAS zlibstatic)
+set(zlib_target zlibstatic)
+if(NOT TARGET ${zlib_target} AND TARGET ZLIB::ZLIB)
+    set(zlib_target ZLIB::ZLIB)
 endif()
 
 set(SPNG_SHARED OFF CACHE BOOL "Build shared libspng" FORCE)
@@ -435,5 +436,5 @@ target_include_directories(spng_static PUBLIC
     ${spng_src_SOURCE_DIR}/spng
 )
 target_link_libraries(spng_static PRIVATE
-    ZLIB::ZLIB
+    ${zlib_target}
 )
