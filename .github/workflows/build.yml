@@ -67,9 +67,10 @@ jobs:
               mesa-dev \
               nasm \
               ninja \
-              openmp-dev \
               perl \
-              python3 &&
+              python3 \
+              zlib-dev \
+              zlib-static &&
             cmake -S . -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=clang \
@@ -80,23 +81,23 @@ jobs:
       - name: Build (Linux glibc)
         if: runner.os == 'Linux' && matrix.config.libc == 'glibc'
         run: |
-          docker run --rm -v "$PWD:/work" -w /work ubuntu:20.04 bash -lc '
+          docker run --rm -v "$PWD:/work" -w /work ubuntu:24.04 bash -lc '
             export DEBIAN_FRONTEND=noninteractive &&
             apt-get update &&
             apt-get install -y --no-install-recommends \
+              build-essential \
+              ca-certificates \
               clang \
+              cmake \
               git \
               libegl1-mesa-dev \
               libgl1-mesa-dev \
-              libomp-dev \
               make \
               nasm \
               ninja-build \
               perl \
               python3 \
-              python3-pip \
-              ca-certificates &&
-            pip3 install --no-cache-dir "cmake>=3.20" &&
+              zlib1g-dev &&
             cmake -S . -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=clang \

@@ -177,7 +177,11 @@ if(ENABLE_FFMPEG AND NOT FFMPEG_PROVIDER STREQUAL "off")
 endif()
 
 add_library(spine2dump_openmp INTERFACE)
-target_compile_options(spine2dump_openmp INTERFACE -fopenmp)
+if(WIN32 OR APPLE)
+    target_compile_options(spine2dump_openmp INTERFACE -fopenmp)
+else()
+    target_compile_options(spine2dump_openmp INTERFACE -fopenmp=libgomp)
+endif()
 add_library(OpenMP::OpenMP_C ALIAS spine2dump_openmp)
 
 function(prefix_header out_file prefix)
