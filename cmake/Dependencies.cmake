@@ -105,6 +105,8 @@ function(add_external_ffmpeg)
     set(ffmpeg_configure_args
         --prefix=${ffmpeg_prefix}
         --cc=${CMAKE_C_COMPILER}
+        --pkg-config-flags=--static
+        --extra-cflags=-DX264_API=
         --disable-shared
         --enable-static
         --disable-doc
