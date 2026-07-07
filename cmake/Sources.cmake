@@ -50,6 +50,11 @@ target_include_directories(spine2dump SYSTEM PRIVATE
 enable_project_warnings(spine2dump)
 enable_clang_tidy(spine2dump)
 target_link_libraries(spine2dump PRIVATE argtable3 zf_log fort spng_static uv_a OpenMP::OpenMP_C)
+if(STATIC)
+    if(MINGW)
+        target_link_options(spine2dump PRIVATE -static -static-libgcc)
+    endif()
+endif()
 if(WIN32)
     target_link_libraries(spine2dump PRIVATE opengl32 gdi32 user32)
 elseif(APPLE)
@@ -87,31 +92,33 @@ foreach(bundle_omp_lib IN LISTS OpenMP_C_LIBRARIES OpenMP_omp_LIBRARY)
 endforeach()
 list(REMOVE_DUPLICATES bundle_search_dirs)
 
-install(CODE "set(bundle_exe \"$<TARGET_FILE:spine2dump>\")" COMPONENT Runtime)
-install(CODE "set(bundle_search_dirs \"${bundle_search_dirs}\")" COMPONENT Runtime)
-install(CODE [[
-    file(GET_RUNTIME_DEPENDENCIES
-        EXECUTABLES "${bundle_exe}"
-        RESOLVED_DEPENDENCIES_VAR bundle_resolved
-        UNRESOLVED_DEPENDENCIES_VAR bundle_unresolved
-        DIRECTORIES ${bundle_search_dirs}
-        PRE_EXCLUDE_REGEXES "api-ms-win-.*" "ext-ms-.*"
-        POST_EXCLUDE_REGEXES
-            ".*[/\\]system32[/\\].*"
-            "^/lib/.*"
-            "^/usr/lib/(x86_64|aarch64)-linux-gnu/.*"
-            "^/System/Library/.*"
-            "^/usr/lib/libSystem.*"
-    )
-    foreach(bundle_dep IN LISTS bundle_resolved)
-        file(INSTALL
-            DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
-            TYPE SHARED_LIBRARY
-            FOLLOW_SYMLINK_CHAIN
-            FILES "${bundle_dep}"
+if(NOT STATIC)
+    install(CODE "set(bundle_exe \"$<TARGET_FILE:spine2dump>\")" COMPONENT Runtime)
+    install(CODE "set(bundle_search_dirs \"${bundle_search_dirs}\")" COMPONENT Runtime)
+    install(CODE [[
+        file(GET_RUNTIME_DEPENDENCIES
+            EXECUTABLES "${bundle_exe}"
+            RESOLVED_DEPENDENCIES_VAR bundle_resolved
+            UNRESOLVED_DEPENDENCIES_VAR bundle_unresolved
+            DIRECTORIES ${bundle_search_dirs}
+            PRE_EXCLUDE_REGEXES "api-ms-win-.*" "ext-ms-.*"
+            POST_EXCLUDE_REGEXES
+                ".*[/\\]system32[/\\].*"
+                "^/lib/.*"
+                "^/usr/lib/(x86_64|aarch64)-linux-gnu/.*"
+                "^/System/Library/.*"
+                "^/usr/lib/libSystem.*"
         )
-    endforeach()
-    foreach(bundle_dep IN LISTS bundle_unresolved)
-        message(STATUS "Unresolved runtime dependency left to system: ${bundle_dep}")
-    endforeach()
-]] COMPONENT Runtime)
+        foreach(bundle_dep IN LISTS bundle_resolved)
+            file(INSTALL
+                DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
+                TYPE SHARED_LIBRARY
+                FOLLOW_SYMLINK_CHAIN
+                FILES "${bundle_dep}"
+            )
+        endforeach()
+        foreach(bundle_dep IN LISTS bundle_unresolved)
+            message(STATUS "Unresolved runtime dependency left to system: ${bundle_dep}")
+        endforeach()
+    ]] COMPONENT Runtime)
+endif()

@@ -35,20 +35,26 @@ endfunction()
 
 function(find_root_ffmpeg out_found)
     if(FFMPEG_ROOT STREQUAL "")
-        set(${out_found} FALSE PARENT_SCOPE)
-        return()
+        set(ffmpeg_search_args)
+    else()
+        set(ffmpeg_search_args PATHS "${FFMPEG_ROOT}/include" NO_DEFAULT_PATH)
     endif()
 
     find_path(FFMPEG_INCLUDE_DIR NAMES libavformat/avformat.h
-              PATHS "${FFMPEG_ROOT}/include" NO_DEFAULT_PATH)
+              ${ffmpeg_search_args})
+    if(FFMPEG_ROOT STREQUAL "")
+        set(ffmpeg_search_args)
+    else()
+        set(ffmpeg_search_args PATHS "${FFMPEG_ROOT}/lib" NO_DEFAULT_PATH)
+    endif()
     find_library(FFMPEG_AVFORMAT_LIBRARY NAMES avformat libavformat
-                 PATHS "${FFMPEG_ROOT}/lib" NO_DEFAULT_PATH)
+                 ${ffmpeg_search_args})
     find_library(FFMPEG_AVCODEC_LIBRARY NAMES avcodec libavcodec
-                 PATHS "${FFMPEG_ROOT}/lib" NO_DEFAULT_PATH)
+                 ${ffmpeg_search_args})
     find_library(FFMPEG_AVUTIL_LIBRARY NAMES avutil libavutil
-                 PATHS "${FFMPEG_ROOT}/lib" NO_DEFAULT_PATH)
+                 ${ffmpeg_search_args})
     find_library(FFMPEG_SWSCALE_LIBRARY NAMES swscale libswscale
-                 PATHS "${FFMPEG_ROOT}/lib" NO_DEFAULT_PATH)
+                 ${ffmpeg_search_args})
 
     if(FFMPEG_INCLUDE_DIR AND FFMPEG_AVFORMAT_LIBRARY AND FFMPEG_AVCODEC_LIBRARY AND
        FFMPEG_AVUTIL_LIBRARY AND FFMPEG_SWSCALE_LIBRARY)
@@ -60,7 +66,10 @@ function(find_root_ffmpeg out_found)
 endfunction()
 
 function(add_external_ffmpeg)
-    if(WIN32)
+    if(WIN32 AND NOT (STATIC AND MINGW))
+        if(STATIC)
+            message(FATAL_ERROR "STATIC Windows builds need FFMPEG_ROOT pointing to a static FFmpeg SDK, or a MinGW build so FFmpeg can be built from source. The bundled Windows external provider is shared.")
+        endif()
         set(ffmpeg_version "8.1.2")
         set(ffmpeg_prefix "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg/ffmpeg-${ffmpeg_version}-full_build-shared")
         file(MAKE_DIRECTORY "${ffmpeg_prefix}/include" "${ffmpeg_prefix}/lib" "${ffmpeg_prefix}/bin")
@@ -77,7 +86,7 @@ function(add_external_ffmpeg)
                 "${ffmpeg_prefix}/lib/swscale.lib"
         )
 
-        set(FFMPEG_ROOT "${ffmpeg_prefix}" CACHE PATH "Path to a prebuilt static FFmpeg SDK" FORCE)
+        set(FFMPEG_ROOT "${ffmpeg_prefix}" CACHE PATH "Path to a prebuilt FFmpeg SDK" FORCE)
         set(FFMPEG_INCLUDE_DIR "${ffmpeg_prefix}/include")
         set(FFMPEG_AVFORMAT_LIBRARY "${ffmpeg_prefix}/lib/avformat.lib")
         set(FFMPEG_AVCODEC_LIBRARY "${ffmpeg_prefix}/lib/avcodec.lib")
@@ -100,10 +109,13 @@ function(add_external_ffmpeg)
         --disable-network
         --disable-everything
         --disable-audiotoolbox
+        --disable-bzlib
         --disable-iconv
         --disable-libdrm
+        --disable-lzma
         --disable-vaapi
         --disable-vdpau
+        --disable-zlib
         --enable-avcodec
         --enable-avformat
         --enable-avutil
@@ -149,7 +161,7 @@ if(ENABLE_FFMPEG AND NOT FFMPEG_PROVIDER STREQUAL "off")
     set(ffmpeg_found FALSE)
     find_root_ffmpeg(ffmpeg_found)
     if(NOT ffmpeg_found AND (FFMPEG_PROVIDER STREQUAL "external" OR
-                             (FFMPEG_PROVIDER STREQUAL "auto" AND NOT WIN32)))
+                             (FFMPEG_PROVIDER STREQUAL "auto" AND STATIC)))
         add_external_ffmpeg()
         if(TARGET FFmpeg::FFmpeg)
             set(ffmpeg_found TRUE)
@@ -299,7 +311,6 @@ function(add_embedded_runtime spine_version)
         RUNTIME_MAJOR=${spine_version_major}
         RUNTIME_MINOR=${spine_version_minor}
     )
-
     target_sources(spine2dump PRIVATE
         $<TARGET_OBJECTS:${runtime_name}>
         $<TARGET_OBJECTS:${app_name}>
