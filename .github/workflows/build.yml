@@ -65,6 +65,7 @@ jobs:
               mesa-dev \
               nasm \
               ninja \
+              openmp-dev \
               perl \
               python3 \
               zlib-dev \

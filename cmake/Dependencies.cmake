@@ -138,7 +138,7 @@ function(add_external_ffmpeg)
     ExternalProject_Add(ffmpeg_external
         URL https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz
         UPDATE_DISCONNECTED TRUE
-        CONFIGURE_COMMAND <SOURCE_DIR>/configure ${ffmpeg_configure_args}
+        CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "PATH=$ENV{PATH}" sh <SOURCE_DIR>/configure ${ffmpeg_configure_args}
         BUILD_COMMAND make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS
