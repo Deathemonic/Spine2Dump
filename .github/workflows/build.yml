@@ -25,10 +25,11 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump, static: true }
-          - { name: windows-x86_64, os: windows-latest, binary: spine2dump.exe, static: true }
-          - { name: macos-x86_64, os: macos-latest, binary: spine2dump, static: false }
-          - { name: macos-aarch64, os: macos-latest, binary: spine2dump, static: false }
+          - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump, libc: glibc }
+          - { name: linux-x86_64-musl, os: ubuntu-latest, binary: spine2dump, libc: musl }
+          - { name: windows-x86_64, os: windows-latest, binary: spine2dump.exe }
+          - { name: macos-x86_64, os: macos-latest, binary: spine2dump }
+          - { name: macos-aarch64, os: macos-latest, binary: spine2dump }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,8 +53,8 @@ jobs:
             mingw-w64-clang-x86_64-ninja
             mingw-w64-clang-x86_64-llvm-openmp
 
-      - name: Build (Linux)
-        if: runner.os == 'Linux'
+      - name: Build (Linux musl)
+        if: runner.os == 'Linux' && matrix.config.libc == 'musl'
         run: |
           docker run --rm -v "$PWD:/work" -w /work alpine:3.20 sh -lc '
             apk add --no-cache \
@@ -68,13 +69,37 @@ jobs:
               ninja \
               openmp-dev \
               perl \
-              python3 \
-              zlib-dev \
-              zlib-static &&
+              python3 &&
             cmake -S . -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_C_COMPILER=clang \
-              -DSTATIC=ON \
+              -DFFMPEG_PROVIDER=external &&
+            cmake --build build --config Release
+          '
+
+      - name: Build (Linux glibc)
+        if: runner.os == 'Linux' && matrix.config.libc == 'glibc'
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work ubuntu:20.04 bash -lc '
+            export DEBIAN_FRONTEND=noninteractive &&
+            apt-get update &&
+            apt-get install -y --no-install-recommends \
+              clang \
+              git \
+              libegl1-mesa-dev \
+              libgl1-mesa-dev \
+              libomp-dev \
+              make \
+              nasm \
+              ninja-build \
+              perl \
+              python3 \
+              python3-pip \
+              ca-certificates &&
+            pip3 install --no-cache-dir "cmake>=3.20" &&
+            cmake -S . -B build -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER=clang \
               -DFFMPEG_PROVIDER=external &&
             cmake --build build --config Release
           '
@@ -136,7 +161,8 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump }
+          - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump, libc: glibc }
+          - { name: linux-x86_64-musl, os: ubuntu-latest, binary: spine2dump, libc: musl }
           - { name: windows-x86_64, os: windows-latest, binary: spine2dump.exe }
           - { name: macos-x86_64, os: macos-latest, binary: spine2dump }
           - { name: macos-aarch64, os: macos-latest, binary: spine2dump }
@@ -152,12 +178,31 @@ jobs:
           name: spine2dump-${{ matrix.config.name }}
           path: verify
 
-      - name: Verify (Linux)
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify && runner.os == 'Linux' }}
+      - name: Verify (Linux glibc)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify && runner.os == 'Linux' && matrix.config.libc == 'glibc' }}
         run: |
           chmod +x verify/${{ matrix.config.binary }}
-          docker run --rm -v "$PWD/verify:/app:ro" ubuntu:24.04 sh -c 'ldd /app/${{ matrix.config.binary }} || true'
-          docker run --rm -v "$PWD/verify:/app:ro" ubuntu:24.04 /app/${{ matrix.config.binary }} --help
+          docker run --rm -v "$PWD/verify:/app:ro" ubuntu:24.04 bash -lc '
+            export DEBIAN_FRONTEND=noninteractive &&
+            apt-get update -qq &&
+            apt-get install -y --no-install-recommends libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri >/dev/null &&
+            echo "== Dynamic dependencies ==" &&
+            ldd /app/${{ matrix.config.binary }} || true &&
+            echo "== Run ==" &&
+            /app/${{ matrix.config.binary }} --help
+          '
+
+      - name: Verify (Linux musl)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify && runner.os == 'Linux' && matrix.config.libc == 'musl' }}
+        run: |
+          chmod +x verify/${{ matrix.config.binary }}
+          docker run --rm -v "$PWD/verify:/app:ro" alpine:3.20 sh -lc '
+            apk add --no-cache mesa-egl mesa-gl mesa-dri-gallium libc6-compat >/dev/null &&
+            echo "== Dynamic dependencies ==" &&
+            ldd /app/${{ matrix.config.binary }} || true &&
+            echo "== Run ==" &&
+            /app/${{ matrix.config.binary }} --help
+          '
 
       - name: Verify (Windows)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify && runner.os == 'Windows' }}

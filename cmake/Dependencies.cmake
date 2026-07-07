@@ -176,13 +176,9 @@ if(ENABLE_FFMPEG AND NOT FFMPEG_PROVIDER STREQUAL "off")
     endif()
 endif()
 
-find_package(OpenMP QUIET COMPONENTS C)
-if(NOT TARGET OpenMP::OpenMP_C)
-    add_library(spine2dump_openmp INTERFACE)
-    target_compile_options(spine2dump_openmp INTERFACE -fopenmp)
-    target_link_options(spine2dump_openmp INTERFACE -fopenmp)
-    add_library(OpenMP::OpenMP_C ALIAS spine2dump_openmp)
-endif()
+add_library(spine2dump_openmp INTERFACE)
+target_compile_options(spine2dump_openmp INTERFACE -fopenmp)
+add_library(OpenMP::OpenMP_C ALIAS spine2dump_openmp)
 
 function(prefix_header out_file prefix)
     set(symbols
