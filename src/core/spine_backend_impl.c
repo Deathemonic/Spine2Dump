@@ -16,6 +16,7 @@
 #include "gpu_backend.h"
 #include "gpu_renderer.h"
 #include "image_io.h"
+#include "log.h"
 #include "media_encoder.h"
 #include "path.h"
 #include "spine_backend.h"
@@ -34,7 +35,7 @@ char* _spUtil_readFile(const char* path, int* length) {
     void* data = NULL;
     size_t size = 0;
     if (file_read_all(path, &data, &size) != 0) {
-        ZF_LOGE("failed to read file: %s", path);
+        ZF_LOGE("Failed to read file: %s", path);
         return NULL;
     }
     *length = (int)size;
@@ -85,20 +86,20 @@ static spSkeletonData* load_skeleton_data(const char* skel_path,
                                           spSkeletonBinary** binary_out) {
     spAtlas* atlas = spAtlas_createFromFile(atlas_path, NULL);
     if (atlas == NULL) {
-        ZF_LOGE("spine-c could not load atlas: %s", atlas_path);
+        ZF_LOGE("Spine-c could not load atlas: %s", atlas_path);
         return NULL;
     }
 
     spSkeletonBinary* binary = spSkeletonBinary_create(atlas);
     if (binary == NULL) {
-        ZF_LOGE("spine-c could not create binary loader");
+        ZF_LOGE("Spine-c could not create binary loader.");
         spAtlas_dispose(atlas);
         return NULL;
     }
 
     spSkeletonData* data = spSkeletonBinary_readSkeletonDataFile(binary, skel_path);
     if (data == NULL) {
-        ZF_LOGE("spine-c could not load skeleton: %s: %s", skel_path,
+        ZF_LOGE("Spine-c could not load skeleton: %s: %s", skel_path,
                 binary->error == NULL ? "<none>" : binary->error);
         spSkeletonBinary_dispose(binary);
         spAtlas_dispose(atlas);
@@ -137,11 +138,11 @@ static GpuBackend* try_gpu_init(const RenderOptions* options, const CpuAtlasPage
     }
     GpuBackend* backend = gpu_backend_init(options->width, options->height);
     if (backend == NULL) {
-        ZF_LOGW("GPU init failed; falling back to CPU renderer");
+        ZF_LOGW("GPU init failed. Falling back to CPU renderer.");
         return NULL;
     }
     if (gpu_backend_upload_atlas(backend, pages) != 0) {
-        ZF_LOGW("GPU atlas upload failed; falling back to CPU renderer");
+        ZF_LOGW("GPU atlas upload failed. Falling back to CPU renderer.");
         gpu_backend_shutdown(backend);
         return NULL;
     }
@@ -199,7 +200,7 @@ static int write_png_image(const WritePngRequest* request) {
                                          &encode_options);
     rgba_image_free(&cropped);
     if (result != 0) {
-        ZF_LOGE("could not write PNG: %s", request->output_path);
+        ZF_LOGE("Could not write PNG: %s", request->output_path);
         return -1;
     }
     return 0;
@@ -294,7 +295,7 @@ static void dump_expression(int slot_index,
     }
     rgba_image_free(&image);
     if (result == 0) {
-        ZF_LOGI("wrote %s", output_path);
+        ZF_LOGD("Wrote %s", output_path);
         context->rendered++;
     }
 
@@ -431,7 +432,9 @@ int spine_backend_dump_expressions(const char* skel_path,
     }
 
     if (context.rendered == 0) {
-        ZF_LOGW("no expression candidates were rendered");
+        ZF_LOGW("No expression candidates were rendered.");
+    } else {
+        ZF_LOG_SUCCESS("Dumped %d expression still(s) to %s", context.rendered, output_dir);
     }
 
     gpu_backend_shutdown(backend);
@@ -528,7 +531,7 @@ static int dump_one_animation(spSkeletonData* data,
     double start = options->start_seconds;
     double end = options->end_seconds >= 0.0 ? options->end_seconds : animation->duration;
     if (start > animation->duration) {
-        ZF_LOGW("skipping %s: start %.3fs is past animation duration %.3fs", animation->name, start,
+        ZF_LOGW("Skipping %s: start %.3fs is past animation duration %.3fs", animation->name, start,
                 animation->duration);
         return 0;
     }
@@ -544,11 +547,11 @@ static int dump_one_animation(spSkeletonData* data,
         frame_count = 1;
     }
 
-    ZF_LOGI("dumping %s: %.3fs to %.3fs, %d frames", animation->name, start, end, frame_count);
+    ZF_LOGD("Dumping %s: %.3fs to %.3fs, %d frames", animation->name, start, end, frame_count);
 
     CpuAtlasPages* pages = cpu_atlas_pages_load(atlas, atlas_dir);
     if (pages == NULL) {
-        ZF_LOGE("could not load atlas pages for %s", animation->name);
+        ZF_LOGE("Could not load atlas pages for %s", animation->name);
         return -1;
     }
     GpuBackend* backend = should_use_gpu_for_output(&options->render, options->output)
@@ -572,7 +575,7 @@ static int dump_one_animation(spSkeletonData* data,
         snprintf(media_name, sizeof(media_name), "%s.%s", safe_animation,
                  media_output_extension(options->output));
         if (path_join(output_dir, media_name, media_path, sizeof(media_path)) != 0) {
-            ZF_LOGE("media output path is too long: %s", animation->name);
+            ZF_LOGE("Media output path is too long: %s", animation->name);
             gpu_backend_shutdown(backend);
             cpu_atlas_pages_free(pages);
             return -1;
@@ -639,7 +642,7 @@ static int dump_one_animation(spSkeletonData* data,
 
     char frame_dir[1024];
     if (path_join(output_dir, safe_animation, frame_dir, sizeof(frame_dir)) != 0) {
-        ZF_LOGE("animation output path is too long: %s", animation->name);
+        ZF_LOGE("Animation output path is too long: %s", animation->name);
         gpu_backend_shutdown(backend);
         cpu_atlas_pages_free(pages);
         return -1;
@@ -727,7 +730,7 @@ int spine_backend_dump_animations(const char* skel_path,
     if (options->animation != NULL) {
         spAnimation* animation = find_animation_by_name(data, options->animation);
         if (animation == NULL) {
-            ZF_LOGE("animation not found: %s", options->animation);
+            ZF_LOGE("Animation not found: %s", options->animation);
             result = -1;
         } else {
             result = dump_one_animation(data, atlas, atlas_dir, animation, output_dir, options);
@@ -745,7 +748,7 @@ int spine_backend_dump_animations(const char* skel_path,
     }
 
     if (result == 0) {
-        ZF_LOGI("dumped %d animation(s) to %s", dumped, output_dir);
+        ZF_LOG_SUCCESS("Dumped %d animation(s) to %s", dumped, output_dir);
     }
 
     spSkeletonData_dispose(data);

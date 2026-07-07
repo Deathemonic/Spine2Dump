@@ -31,19 +31,19 @@ static int command_inspect(const char* input_dir) {
 
     AtlasPageStats page_stats;
     int page_result = validate_atlas_pages(&bundle.atlas_files, &bundle.png_files, &page_stats);
-    ZF_LOGI("Found %zu .skel, %zu .atlas, %zu .png files under %s", bundle.skel_files.count,
+    ZF_LOGD("Found %zu .skel, %zu .atlas, %zu .png files under %s", bundle.skel_files.count,
             bundle.atlas_files.count, bundle.png_files.count, input_dir);
-    ZF_LOGI("Atlas pages: %zu referenced, %zu found, %zu missing", page_stats.referenced,
+    ZF_LOGD("Atlas pages: %zu referenced, %zu found, %zu missing", page_stats.referenced,
             page_stats.found, page_stats.missing);
 
     for (size_t i = 0; i < bundle.skel_files.count; i++) {
-        ZF_LOGI("  skel  %s", bundle.skel_files.items[i]);
+        ZF_LOGD("Skel %s", bundle.skel_files.items[i]);
     }
     for (size_t i = 0; i < bundle.atlas_files.count; i++) {
-        ZF_LOGI("  atlas %s", bundle.atlas_files.items[i]);
+        ZF_LOGD("Atlas %s", bundle.atlas_files.items[i]);
     }
     for (size_t i = 0; i < bundle.png_files.count; i++) {
-        ZF_LOGI("  png   %s", bundle.png_files.items[i]);
+        ZF_LOGD("Png %s", bundle.png_files.items[i]);
     }
 
     if (bundle.skel_files.count > 0 && bundle.atlas_files.count > 0) {

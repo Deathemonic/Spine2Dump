@@ -60,7 +60,7 @@ static int load_pages(spAtlas* atlas,
         pages[index].height = (int)height;
         pages[index].channels = 4;
         if (pages[index].name == NULL || error != 0 || pages[index].pixels == NULL) {
-            ZF_LOGE("could not load atlas page PNG: %s", load_path);
+            ZF_LOGE("Could not load atlas page PNG: %s", load_path);
             free_pages(pages, count);
             return -1;
         }
@@ -196,7 +196,7 @@ int cpu_renderer_render_png(const CpuRenderPngRequest* request) {
     rgba_image_free(&canvas);
 
     if (png_error != 0) {
-        ZF_LOGE("could not write PNG: %s", request->output_path);
+        ZF_LOGE("Could not write PNG: %s", request->output_path);
         return -1;
     }
 

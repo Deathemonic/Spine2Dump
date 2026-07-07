@@ -136,7 +136,7 @@ int spine_version_detect_file(const char* skel_path, char* version, size_t versi
     void* contents = NULL;
     size_t size = 0;
     if (file_read_all(skel_path, &contents, &size) != 0 || size == 0) {
-        ZF_LOGE("could not open skeleton: %s", skel_path);
+        ZF_LOGE("Could not open skeleton: %s", skel_path);
         free(contents);
         return -1;
     }

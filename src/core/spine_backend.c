@@ -61,25 +61,25 @@ static const SpineBackendVTable backends[] = {
 static const SpineBackendVTable* find_backend_for_skel(const char* skel_path) {
     char version[32];
     if (spine_version_detect_file(skel_path, version, sizeof(version)) != 0) {
-        ZF_LOGE("could not detect Spine version from %s", skel_path);
+        ZF_LOGE("Could not detect Spine version from %s", skel_path);
         return NULL;
     }
 
     int major = 0;
     int minor = 0;
     if (spine_version_major_minor(version, &major, &minor) != 0) {
-        ZF_LOGE("invalid Spine version in %s: %s", skel_path, version);
+        ZF_LOGE("Invalid Spine version in %s: %s", skel_path, version);
         return NULL;
     }
 
     for (size_t i = 0; i < sizeof(backends) / sizeof(backends[0]); i++) {
         if (backends[i].major == major && backends[i].minor == minor) {
-            ZF_LOGI("using Spine runtime %s for skeleton version %s", backends[i].runtime, version);
+            ZF_LOGD("Using Spine runtime %s for skeleton version %s", backends[i].runtime, version);
             return &backends[i];
         }
     }
 
-    ZF_LOGE("unsupported Spine skeleton version: %s", version);
+    ZF_LOGE("Unsupported Spine skeleton version: %s", version);
     return NULL;
 }
 

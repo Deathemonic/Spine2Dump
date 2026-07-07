@@ -143,7 +143,7 @@ int spine_slot_walk(const SlotWalkRequest* request, SlotWalkSink sink, void* use
     }
 
     if (!has_bounds) {
-        ZF_LOGE("no region or mesh attachments to render");
+        ZF_LOGE("No region or mesh attachments to render.");
         return -1;
     }
 

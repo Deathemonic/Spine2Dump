@@ -1,12 +1,17 @@
 #include "log.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 #include <zf_log/zf_log.h>
 
-static const char* log_level_tag(const int level) {
-    switch (level) {
+static const char* log_level_tag(const zf_log_message* msg) {
+    if (msg->lvl == ZF_LOG_INFO && msg->tag != NULL && strcmp(msg->tag, "SUCCESS") == 0) {
+        return "[SUCCESS]";
+    }
+
+    switch (msg->lvl) {
         case ZF_LOG_VERBOSE:
             return "[TRACE]";
         case ZF_LOG_DEBUG:
@@ -38,7 +43,7 @@ static void log_output_callback(const zf_log_message* msg, void* arg) {
     strftime(timestamp, sizeof(timestamp), "%H:%M:%S", &local);
 
     *msg->p = '\0';
-    fprintf(stderr, "%s %9s %s\n", timestamp, log_level_tag(msg->lvl), msg->msg_b);
+    fprintf(stderr, "%s %9s %s\n", timestamp, log_level_tag(msg), msg->msg_b);
     fflush(stderr);
 }
 

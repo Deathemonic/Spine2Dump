@@ -92,7 +92,7 @@ int scan_assets(const char* root,
                 StringList* png_files) {
     uv_fs_t req;
     if (uv_fs_scandir(NULL, &req, root, 0, NULL) < 0) {
-        ZF_LOGE("could not read directory: %s", root);
+        ZF_LOGE("Could not read directory: %s", root);
         uv_fs_req_cleanup(&req);
         return -1;
     }
@@ -102,7 +102,7 @@ int scan_assets(const char* root,
     while (result == 0 && uv_fs_scandir_next(&req, &entry) != UV_EOF) {
         char child[4096];
         if (path_join(root, entry.name, child, sizeof(child)) != 0) {
-            ZF_LOGE("path is too long under: %s", root);
+            ZF_LOGE("Path is too long under: %s", root);
             result = -1;
             break;
         }
@@ -168,7 +168,7 @@ int validate_atlas_pages(const StringList* atlas_files,
         void* contents = NULL;
         size_t size = 0;
         if (file_read_all(atlas_files->items[i], &contents, &size) != 0) {
-            ZF_LOGE("could not open atlas: %s", atlas_files->items[i]);
+            ZF_LOGE("Could not open atlas: %s", atlas_files->items[i]);
             return -1;
         }
 
@@ -200,7 +200,7 @@ int validate_atlas_pages(const StringList* atlas_files,
                 stats->found++;
             } else {
                 stats->missing++;
-                ZF_LOGE("missing atlas page '%s' referenced by %s", trimmed, atlas_files->items[i]);
+                ZF_LOGE("Missing atlas page '%s' referenced by %s", trimmed, atlas_files->items[i]);
             }
         }
 

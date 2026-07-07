@@ -5,6 +5,8 @@
 
 #include <zf_log/zf_log.h>
 
+#include "log.h"
+
 #if defined(HAVE_FFMPEG)
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
@@ -115,7 +117,7 @@ MediaEncoder* media_encoder_open(const MediaEncodeRequest* request, int width, i
     enum AVCodecID codec_id = codec_id_for(request);
     const AVCodec* codec = find_encoder_for(request);
     if (codec == NULL) {
-        ZF_LOGE("FFmpeg encoder is unavailable for %s", media_output_extension(request->output));
+        ZF_LOGE("Encoder is unavailable for %s", media_output_extension(request->output));
         return NULL;
     }
 
@@ -189,7 +191,7 @@ MediaEncoder* media_encoder_open(const MediaEncodeRequest* request, int width, i
         return NULL;
     }
 
-    ZF_LOGI("encoding %s", request->output_path);
+    ZF_LOGD("Encoding %s", request->output_path);
     return state;
 }
 
@@ -230,9 +232,9 @@ int media_encoder_close(MediaEncoder* encoder) {
 
     int result = send_frame(encoder, NULL) == 0 && av_write_trailer(encoder->format) == 0 ? 0 : -1;
     if (result == 0) {
-        ZF_LOGI("wrote %s", encoder->format->url);
+        ZF_LOG_SUCCESS("Wrote %s", encoder->format->url);
     } else {
-        ZF_LOGE("encode failed: %s", encoder->format->url);
+        ZF_LOGE("Encode failed: %s", encoder->format->url);
     }
     encoder_free(encoder);
     return result;
