@@ -36,6 +36,7 @@ typedef struct {
     struct arg_dbl* scale;
     struct arg_lit* trim;
     struct arg_int* trim_padding;
+    struct arg_str* crop;
     struct arg_int* alpha_threshold;
     struct arg_str* trim_mode;
     struct arg_str* compression;
@@ -43,7 +44,7 @@ typedef struct {
     struct arg_str* codec;
     struct arg_lit* software;
     struct arg_end* end;
-    void* table[22];
+    void* table[23];
 } DumpArgs;
 
 RootArgs cli_root_args(void);

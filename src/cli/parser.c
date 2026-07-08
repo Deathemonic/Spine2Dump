@@ -1,6 +1,9 @@
 #include "parser.h"
 
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <argtable3.h>
@@ -9,12 +12,16 @@
 #include "args.h"
 #include "common.h"
 
+static int parse_crop(const char* value, RenderCropRect* crop);
+static int validate_crop(const RenderOptions* options);
+
 static int read_render_options(struct arg_int* size,
                                struct arg_int* width,
                                struct arg_int* height,
                                struct arg_dbl* scale,
                                struct arg_lit* trim,
                                struct arg_int* trim_padding,
+                               struct arg_str* crop,
                                struct arg_int* alpha_threshold,
                                RenderOptions* options) {
     *options = render_options_default();
@@ -38,6 +45,9 @@ static int read_render_options(struct arg_int* size,
     if (alpha_threshold->count > 0) {
         options->alpha_threshold = (unsigned char)alpha_threshold->ival[0];
     }
+    if (parse_crop(crop->count > 0 ? crop->sval[0] : NULL, &options->crop) != 0) {
+        return -1;
+    }
 
     if (alpha_threshold->count > 0 &&
         (alpha_threshold->ival[0] < 0 || alpha_threshold->ival[0] > 255)) {
@@ -47,6 +57,51 @@ static int read_render_options(struct arg_int* size,
     if (options->width <= 0 || options->height <= 0 || options->scale <= 0.0f ||
         options->trim_padding < 0) {
         ZF_LOGE("Invalid render size/scale/trim options.");
+        return -1;
+    }
+    return 0;
+}
+
+static int parse_crop_value(const char** cursor, int* out, char separator) {
+    char* end = NULL;
+    errno = 0;
+    long value = strtol(*cursor, &end, 10);
+    if (end == *cursor || errno != 0 || value < INT_MIN || value > INT_MAX || *end != separator) {
+        return -1;
+    }
+    *out = (int)value;
+    *cursor = end + (separator != '\0');
+    return 0;
+}
+
+static int parse_crop(const char* value, RenderCropRect* crop) {
+    *crop = (RenderCropRect){};
+    if (value == NULL) {
+        return 0;
+    }
+
+    const char* cursor = value;
+    RenderCropRect parsed = {};
+    if (parse_crop_value(&cursor, &parsed.x, ',') != 0 ||
+        parse_crop_value(&cursor, &parsed.y, ',') != 0 ||
+        parse_crop_value(&cursor, &parsed.width, ',') != 0 ||
+        parse_crop_value(&cursor, &parsed.height, '\0') != 0) {
+        ZF_LOGE("Invalid crop rectangle: %s", value);
+        return -1;
+    }
+    parsed.valid = 1;
+    *crop = parsed;
+    return 0;
+}
+
+static int validate_crop(const RenderOptions* options) {
+    if (!options->crop.valid) {
+        return 0;
+    }
+    if (options->crop.x < 0 || options->crop.y < 0 || options->crop.width <= 0 ||
+        options->crop.height <= 0 || options->crop.x > options->width - options->crop.width ||
+        options->crop.y > options->height - options->crop.height) {
+        ZF_LOGE("Invalid crop rectangle.");
         return -1;
     }
     return 0;
@@ -180,9 +235,11 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
             .stills = args.stills->count > 0,
         };
         if (read_render_options(args.size, args.width, args.height, args.scale, args.trim,
-                                args.trim_padding, args.alpha_threshold, &options->render) != 0 ||
+                                args.trim_padding, args.crop, args.alpha_threshold,
+                                &options->render) != 0 ||
             parse_trim_mode(args.trim_mode->count > 0 ? args.trim_mode->sval[0] : NULL,
                             &options->trim_mode) != 0 ||
+            validate_crop(&options->render) != 0 ||
             parse_compression(args.compression->count > 0 ? args.compression->sval[0] : NULL,
                               &options->render.png_compression) != 0 ||
             parse_output(args.format->count > 0 ? args.format->sval[0] : NULL, &options->output) !=
@@ -191,6 +248,10 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
             errors = 1;
         }
         options->render.software = args.software->count > 0;
+        if (options->render.crop.valid && (args.trim->count > 0 || options->trim_mode != RENDER_TRIM_NONE)) {
+            ZF_LOGE("Manual crop cannot be combined with trim options.");
+            errors = 1;
+        }
         if (options->trim_mode != RENDER_TRIM_NONE) {
             options->render.trim = 1;
         }

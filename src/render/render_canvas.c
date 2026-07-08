@@ -132,7 +132,9 @@ const RgbaImage* render_canvas_select_output(const RgbaImage* source,
     }
 
     RenderCropRect crop = {};
-    if (forced_crop != NULL && forced_crop->valid) {
+    if (options->crop.valid) {
+        crop = options->crop;
+    } else if (forced_crop != NULL && forced_crop->valid) {
         crop = *forced_crop;
     } else if (options->trim) {
         crop = render_canvas_alpha_bounds(source, options->alpha_threshold, options->trim_padding);

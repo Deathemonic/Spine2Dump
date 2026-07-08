@@ -9,14 +9,6 @@ typedef struct RgbaImage {
     int height;
 } RgbaImage;
 
-typedef struct RenderCropRect {
-    int x;
-    int y;
-    int width;
-    int height;
-    int valid;
-} RenderCropRect;
-
 void rgba_image_free(RgbaImage* image);
 RenderCropRect render_canvas_alpha_bounds(const RgbaImage* image,
                                           unsigned char alpha_threshold,

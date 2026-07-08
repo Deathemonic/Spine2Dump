@@ -21,12 +21,21 @@ typedef enum RenderVideoCodec {
     RENDER_VIDEO_CODEC_FFV1
 } RenderVideoCodec;
 
+typedef struct RenderCropRect {
+    int x;
+    int y;
+    int width;
+    int height;
+    int valid;
+} RenderCropRect;
+
 typedef struct RenderOptions {
     int width;
     int height;
     float scale;
     int trim;
     int trim_padding;
+    RenderCropRect crop;
     unsigned char alpha_threshold;
     PngCompressionPreset png_compression;
     int software;

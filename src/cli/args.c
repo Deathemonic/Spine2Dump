@@ -46,6 +46,7 @@ DumpArgs cli_dump_args(void) {
         .scale = arg_dbl0(NULL, "scale", "<value>", "render scale multiplier"),
         .trim = arg_lit0(NULL, "trim", "crop transparent borders"),
         .trim_padding = arg_int0(NULL, "trim-padding", "<px>", "padding around trimmed bounds"),
+        .crop = arg_str0(NULL, "crop", "<x,y,width,height>", "manual crop rectangle"),
         .alpha_threshold = arg_int0(NULL, "alpha-threshold", "<0-255>",
                                     "minimum alpha counted as visible"),
         .trim_mode = arg_str0(NULL, "trim-mode", "<none|frame|animation>",
@@ -55,14 +56,14 @@ DumpArgs cli_dump_args(void) {
         .format = arg_str0(NULL, "format", "<image|gif|video>", "animation output format"),
         .codec = arg_str0(NULL, "codec", "<h264|mpeg4|ffv1>", "video codec"),
         .software = arg_lit0(NULL, "software", "force CPU renderer (disable GPU)"),
-        .end = arg_end(18),
+        .end = arg_end(19),
     };
-    void* table[] = {args.help,      args.verbose,     args.input,        args.output,
-                     args.stills,    args.animation,   args.start,        args.end_time,
-                     args.fps,       args.size,        args.width,        args.height,
-                     args.scale,     args.trim,        args.trim_padding, args.alpha_threshold,
-                     args.trim_mode, args.compression, args.format,       args.codec,
-                     args.software,  args.end};
+    void* table[] = {args.help,           args.verbose, args.input,        args.output,
+                     args.stills,         args.animation, args.start,      args.end_time,
+                     args.fps,            args.size,    args.width,        args.height,
+                     args.scale,          args.trim,    args.trim_padding, args.crop,
+                     args.alpha_threshold, args.trim_mode, args.compression, args.format,
+                     args.codec,          args.software, args.end};
     COPY_ARRAY(args.table, table);
     return args;
 }

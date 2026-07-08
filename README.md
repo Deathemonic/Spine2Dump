@@ -80,6 +80,7 @@ spine2dump dump ./assets -o ./output --stills
 | `--trim`                      | Crop transparent borders per image            |                     |
 | `--trim-mode <mode>`          | Animation crop behavior                       | `none`, `frame`, `animation` |
 | `--trim-padding <px>`         | Padding kept around trimmed bounds            | `0`                 |
+| `--crop <x,y,width,height>`   | Manual crop rectangle after rendering         |                     |
 | `--alpha-threshold <0-255>`   | Minimum alpha counted as visible              |                     |
 | `--compression <preset>`      | PNG compression preset (all lossless)         | `fast`, `balanced`, `small` |
 | `--format <format>`           | Animation output format                       | `image`, `gif`, `video` |
