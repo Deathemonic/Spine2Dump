@@ -1,7 +1,10 @@
 #include "media_encoder.h"
 
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <zf_log/zf_log.h>
 
@@ -68,8 +71,125 @@ static const AVCodec* find_encoder_for(const MediaEncodeRequest* request) {
     return avcodec_find_encoder(codec_id_for(request));
 }
 
-static enum AVPixelFormat pixel_format_for(RenderOutputKind output) {
-    return output == RENDER_OUTPUT_GIF ? AV_PIX_FMT_RGB8 : AV_PIX_FMT_YUV420P;
+static const enum AVPixelFormat* codec_pixel_formats(const AVCodec* codec) {
+    const void* formats = NULL;
+    int count = 0;
+    if (codec == NULL ||
+        avcodec_get_supported_config(NULL, codec, AV_CODEC_CONFIG_PIX_FORMAT, 0, &formats, &count) <
+            0 ||
+        count <= 0) {
+        return NULL;
+    }
+    return formats;
+}
+
+static int codec_supports_pixel_format(const enum AVPixelFormat* supported,
+                                       enum AVPixelFormat format) {
+    if (supported == NULL) {
+        return 1;
+    }
+    for (const enum AVPixelFormat* candidate = supported; *candidate != AV_PIX_FMT_NONE;
+         candidate++) {
+        if (*candidate == format) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static const enum AVPixelFormat* preferred_pixel_formats(RenderVideoCodec codec) {
+    static const enum AVPixelFormat ffv1[] = {
+        AV_PIX_FMT_RGBA,    AV_PIX_FMT_BGRA,    AV_PIX_FMT_RGB24,
+        AV_PIX_FMT_YUV444P, AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE,
+    };
+    static const enum AVPixelFormat h264[] = {
+        AV_PIX_FMT_YUV444P,
+        AV_PIX_FMT_YUV422P,
+        AV_PIX_FMT_YUV420P,
+        AV_PIX_FMT_NONE,
+    };
+    static const enum AVPixelFormat mpeg4[] = {
+        AV_PIX_FMT_YUV420P,
+        AV_PIX_FMT_NONE,
+    };
+
+    switch (codec) {
+        case RENDER_VIDEO_CODEC_FFV1:
+            return ffv1;
+        case RENDER_VIDEO_CODEC_H264:
+            return h264;
+        case RENDER_VIDEO_CODEC_MPEG4:
+        default:
+            return mpeg4;
+    }
+}
+
+static enum AVPixelFormat best_pixel_format_for(const AVCodec* codec,
+                                                RenderVideoCodec video_codec) {
+    const enum AVPixelFormat* supported = codec_pixel_formats(codec);
+    const enum AVPixelFormat* formats = preferred_pixel_formats(video_codec);
+    for (const enum AVPixelFormat* format = formats; *format != AV_PIX_FMT_NONE; format++) {
+        if (codec_supports_pixel_format(supported, *format)) {
+            return *format;
+        }
+    }
+    return supported == NULL ? AV_PIX_FMT_YUV420P : supported[0];
+}
+
+static enum AVPixelFormat pixel_format_for(RenderOutputKind output,
+                                           RenderVideoCodec video_codec,
+                                           const AVCodec* codec) {
+    return output == RENDER_OUTPUT_GIF ? AV_PIX_FMT_RGB8
+                                       : best_pixel_format_for(codec, video_codec);
+}
+
+static int64_t high_quality_bitrate(int width, int height, double fps) {
+    double bit_rate = (double)width * (double)height * fps * 8.0;
+    return bit_rate > (double)INT64_MAX ? INT64_MAX : (int64_t)bit_rate;
+}
+
+static int bitrate_tolerance_for(int64_t bit_rate) {
+    int64_t tolerance = bit_rate / 2;
+    return tolerance > INT_MAX ? INT_MAX : (int)tolerance;
+}
+
+static void set_high_quality_lossy(AVCodecContext* context, int width, int height, double fps) {
+    context->bit_rate = high_quality_bitrate(width, height, fps);
+    context->bit_rate_tolerance = bitrate_tolerance_for(context->bit_rate);
+    context->qmin = 1;
+    context->qmax = 3;
+}
+
+static void set_h264_lossless_options(AVCodecContext* context, const AVCodec* codec) {
+    if (codec == NULL || codec->name == NULL || context->priv_data == NULL ||
+        strcmp(codec->name, "libx264") != 0) {
+        return;
+    }
+    av_opt_set(context->priv_data, "preset", "veryslow", 0);
+    av_opt_set(context->priv_data, "tune", "animation", 0);
+    av_opt_set(context->priv_data, "qp", "0", 0);
+}
+
+static void configure_quality(AVCodecContext* context,
+                              const MediaEncodeRequest* request,
+                              const AVCodec* codec,
+                              int width,
+                              int height) {
+    if (request->output == RENDER_OUTPUT_GIF) {
+        return;
+    }
+
+    context->flags |= AV_CODEC_FLAG_QSCALE;
+    context->global_quality = FF_QP2LAMBDA;
+    if (request->codec == RENDER_VIDEO_CODEC_FFV1) {
+        context->compression_level = 0;
+        return;
+    }
+
+    set_high_quality_lossy(context, width, height, request->fps);
+    if (request->codec == RENDER_VIDEO_CODEC_H264) {
+        set_h264_lossless_options(context, codec);
+    }
 }
 
 static void encoder_free(MediaEncoder* state) {
@@ -151,9 +271,10 @@ MediaEncoder* media_encoder_open(const MediaEncodeRequest* request, int width, i
     state->codec->height = height;
     state->codec->time_base = state->stream->time_base;
     state->codec->framerate = frame_rate;
-    state->codec->pix_fmt = pixel_format_for(request->output);
+    state->codec->pix_fmt = pixel_format_for(request->output, request->codec, codec);
     state->codec->gop_size = 12;
     state->codec->max_b_frames = 0;
+    configure_quality(state->codec, request, codec, width, height);
 
     if (state->format->oformat->flags & AVFMT_GLOBALHEADER) {
         state->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
