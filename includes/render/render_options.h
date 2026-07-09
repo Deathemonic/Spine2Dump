@@ -3,6 +3,8 @@
 
 #include "image_io.h"
 
+#define RENDER_HIDE_MAX 64
+
 typedef enum RenderTrimMode {
     RENDER_TRIM_NONE = 0,
     RENDER_TRIM_FRAME = 1,
@@ -39,6 +41,8 @@ typedef struct RenderOptions {
     unsigned char alpha_threshold;
     PngCompressionPreset png_compression;
     int software;
+    const char* hide_patterns[RENDER_HIDE_MAX];
+    int hide_count;
 } RenderOptions;
 
 static inline RenderOptions render_options_default(void) {
@@ -51,6 +55,7 @@ static inline RenderOptions render_options_default(void) {
         .alpha_threshold = 1,
         .png_compression = PNG_COMPRESSION_BALANCED,
         .software = 0,
+        .hide_count = 0,
     };
     return options;
 }

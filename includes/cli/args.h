@@ -3,6 +3,8 @@
 
 #include <argtable3.h>
 
+#include "render_options.h"
+
 typedef struct {
     struct arg_lit* help;
     struct arg_rem* command;
@@ -37,6 +39,7 @@ typedef struct {
     struct arg_lit* trim;
     struct arg_int* trim_padding;
     struct arg_str* crop;
+    struct arg_str* hide;
     struct arg_int* alpha_threshold;
     struct arg_str* trim_mode;
     struct arg_str* compression;
@@ -44,7 +47,7 @@ typedef struct {
     struct arg_str* codec;
     struct arg_lit* software;
     struct arg_end* end;
-    void* table[23];
+    void* table[24];
 } DumpArgs;
 
 RootArgs cli_root_args(void);

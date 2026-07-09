@@ -57,6 +57,52 @@ static int page_index_for(const CpuAtlasPages* pages, const char* name) {
     return -1;
 }
 
+static int pattern_matches(const char* pattern, const char* text) {
+    const char* star = NULL;
+    const char* retry = NULL;
+
+    if (pattern == NULL || text == NULL) {
+        return 0;
+    }
+
+    while (*text != '\0') {
+        if (*pattern == *text) {
+            pattern++;
+            text++;
+        } else if (*pattern == '*') {
+            star = pattern++;
+            retry = text;
+        } else if (star != NULL) {
+            pattern = star + 1;
+            text = ++retry;
+        } else {
+            return 0;
+        }
+    }
+
+    while (*pattern == '*') {
+        pattern++;
+    }
+    return *pattern == '\0';
+}
+
+static int slot_attachment_hidden(const RenderOptions* options,
+                                  const spSlot* slot,
+                                  const spAttachment* attachment) {
+    if (options == NULL || slot == NULL || attachment == NULL) {
+        return 0;
+    }
+    const char* slot_name = slot->data == NULL ? NULL : slot->data->name;
+    const char* attachment_name = attachment->name;
+    for (int i = 0; i < options->hide_count; i++) {
+        const char* pattern = options->hide_patterns[i];
+        if (pattern_matches(pattern, slot_name) || pattern_matches(pattern, attachment_name)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void emit(SlotWalkSink sink,
                  void* user,
                  int page_index,
@@ -99,9 +145,11 @@ int spine_slot_walk(const SlotWalkRequest* request, SlotWalkSink sink, void* use
     int has_bounds = 0;
 
     for (int i = 0; i < skeleton->slotsCount; i++) {
-        spAttachment* attachment = skeleton->drawOrder[i]->attachment;
+        spSlot* slot = skeleton->drawOrder[i];
+        spAttachment* attachment = slot->attachment;
         if (attachment == NULL ||
-            (attachment->type != SP_ATTACHMENT_REGION && attachment->type != SP_ATTACHMENT_MESH)) {
+            (attachment->type != SP_ATTACHMENT_REGION && attachment->type != SP_ATTACHMENT_MESH) ||
+            slot_attachment_hidden(request->options, slot, attachment)) {
             continue;
         }
 
@@ -109,8 +157,8 @@ int spine_slot_walk(const SlotWalkRequest* request, SlotWalkSink sink, void* use
         float stack_vertices[8];
         float* vertices = stack_vertices;
         if (attachment->type == SP_ATTACHMENT_REGION) {
-            spine_compat_region_compute_world_vertices((spRegionAttachment*)attachment,
-                                                       skeleton->drawOrder[i], vertices, 0, 2);
+            spine_compat_region_compute_world_vertices((spRegionAttachment*)attachment, slot,
+                                                       vertices, 0, 2);
         } else {
             spMeshAttachment* mesh = (spMeshAttachment*)attachment;
             vertex_count = mesh->super.worldVerticesLength / 2;
@@ -118,7 +166,7 @@ int spine_slot_walk(const SlotWalkRequest* request, SlotWalkSink sink, void* use
             if (vertices == NULL) {
                 continue;
             }
-            spVertexAttachment_computeWorldVertices(&mesh->super, skeleton->drawOrder[i], 0,
+            spVertexAttachment_computeWorldVertices(&mesh->super, slot, 0,
                                                     mesh->super.worldVerticesLength, vertices, 0,
                                                     2);
         }
@@ -178,6 +226,10 @@ int spine_slot_walk(const SlotWalkRequest* request, SlotWalkSink sink, void* use
             continue;
         }
         if (attachment->type != SP_ATTACHMENT_REGION && attachment->type != SP_ATTACHMENT_MESH) {
+            spSkeletonClipping_clipEnd(clipper, slot);
+            continue;
+        }
+        if (slot_attachment_hidden(request->options, slot, attachment)) {
             spSkeletonClipping_clipEnd(clipper, slot);
             continue;
         }

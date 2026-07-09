@@ -107,6 +107,19 @@ static int validate_crop(const RenderOptions* options) {
     return 0;
 }
 
+static int read_hide_patterns(struct arg_str* hide, RenderOptions* options) {
+    options->hide_count = hide->count;
+    for (int i = 0; i < hide->count; i++) {
+        const char* pattern = hide->sval[i];
+        if (pattern == NULL || pattern[0] == '\0') {
+            ZF_LOGE("Invalid hide pattern.");
+            return -1;
+        }
+        options->hide_patterns[i] = pattern;
+    }
+    return 0;
+}
+
 static int parse_trim_mode(const char* value, RenderTrimMode* trim_mode) {
     if (value == NULL || strcmp(value, "none") == 0) {
         *trim_mode = RENDER_TRIM_NONE;
@@ -237,6 +250,7 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
         if (read_render_options(args.size, args.width, args.height, args.scale, args.trim,
                                 args.trim_padding, args.crop, args.alpha_threshold,
                                 &options->render) != 0 ||
+            read_hide_patterns(args.hide, &options->render) != 0 ||
             parse_trim_mode(args.trim_mode->count > 0 ? args.trim_mode->sval[0] : NULL,
                             &options->trim_mode) != 0 ||
             validate_crop(&options->render) != 0 ||
@@ -248,7 +262,8 @@ CliParseResult cli_parse_dump_command(int argc, char** argv, DumpOptions* option
             errors = 1;
         }
         options->render.software = args.software->count > 0;
-        if (options->render.crop.valid && (args.trim->count > 0 || options->trim_mode != RENDER_TRIM_NONE)) {
+        if (options->render.crop.valid &&
+            (args.trim->count > 0 || options->trim_mode != RENDER_TRIM_NONE)) {
             ZF_LOGE("Manual crop cannot be combined with trim options.");
             errors = 1;
         }
