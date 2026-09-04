@@ -3,6 +3,9 @@ build-*/
 out/
 dist/
 
+.xmake/
+compile_commands.json
+
 *.exe
 *.obj
 *.o
@@ -13,3 +16,4 @@ dist/
 .idea/
 
 samples/
+.ref/

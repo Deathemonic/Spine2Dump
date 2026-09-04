@@ -97,23 +97,28 @@ The animation/time options (`--animation`, `--start`, `--end`, `--fps`, `--trim-
 
 ## Building
 
-1. Install [CMake](https://cmake.org), [Ninja](https://ninja-build.org), and [Clang](https://clang.llvm.org)
+1. Install [xmake](https://xmake.io) and [Clang](https://clang.llvm.org)
 2. Clone this repository
 ```sh
 git clone https://github.com/Deathemonic/Spine2Dump
 cd Spine2Dump
 ```
-3. Build using `cmake`
+3. Build using `xmake`
 ```sh
-cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang
-cmake --build build
+xmake f -y
+xmake
 ```
 
-The executable is generated at `build/spine2dump`.
+The executable is generated at `build/<platform>/<arch>/release/spine2dump`.
 
-To change the embedded runtime list, pass `SPINE_VERSIONS`:
+### Build options
 ```sh
-cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang -DSPINE_VERSIONS="3.8;4.2"
+# Static release binary
+xmake f --static=y
+# Disable in-process FFmpeg media export
+xmake f --ffmpeg=n
+# Enable GPL FFmpeg codecs (e.g. x264)
+xmake f --gpl=y         
 ```
 
 ### Contributing

@@ -28,131 +28,62 @@ jobs:
           - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump, libc: glibc }
           - { name: linux-x86_64-musl, os: ubuntu-latest, binary: spine2dump, libc: musl }
           - { name: windows-x86_64, os: windows-latest, binary: spine2dump.exe }
-          - { name: macos-x86_64, os: macos-latest, binary: spine2dump }
+          - { name: macos-x86_64, os: macos-15-intel, binary: spine2dump }
           - { name: macos-aarch64, os: macos-latest, binary: spine2dump }
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: brew install ninja llvm nasm
-
-      - name: Setup MSYS2 (Windows)
-        if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
+      - name: Setup xmake
+        if: matrix.config.libc != 'musl'
+        uses: xmake-io/github-action-setup-xmake@v1
         with:
-          msystem: CLANG64
-          update: true
-          install: >-
-            git
-            make
-            nasm
-            mingw-w64-clang-x86_64-cmake
-            mingw-w64-clang-x86_64-clang
-            mingw-w64-clang-x86_64-ninja
-            mingw-w64-clang-x86_64-llvm-openmp
-            mingw-w64-clang-x86_64-pkgconf
-            mingw-w64-clang-x86_64-x264
+          xmake-version: latest
+          build-cache: true
+          package-cache: true
+          project-path: '.'
+
+      - name: Build (Linux glibc)
+        if: runner.os == 'Linux' && matrix.config.libc == 'glibc'
+        run: |
+          xmake f -y --toolchain=clang --static=y --ffmpeg=y --gpl=y
+          xmake -y -j$(nproc)
+          xmake install -o dist
 
       - name: Build (Linux musl)
         if: runner.os == 'Linux' && matrix.config.libc == 'musl'
         run: |
           docker run --rm -v "$PWD:/work" -w /work alpine:3.20 sh -lc '
             apk add --no-cache \
-              bash \
               build-base \
               clang \
-              cmake \
               git \
-              make \
               mesa-dev \
-              nasm \
-              ninja \
-              perl \
-              python3 \
+              xmake \
               zlib-dev \
               zlib-static &&
-            cmake -S . -B build -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_C_COMPILER=clang \
-              -DFFMPEG_PROVIDER=external &&
-            cmake --build build --config Release
+            xmake f -y --toolchain=clang --static=y --ffmpeg=y --gpl=y &&
+            xmake -y -j$(nproc) &&
+            xmake install -o dist
           '
-
-      - name: Build (Linux glibc)
-        if: runner.os == 'Linux' && matrix.config.libc == 'glibc'
-        run: |
-          docker run --rm -v "$PWD:/work" -w /work ubuntu:24.04 bash -lc '
-            export DEBIAN_FRONTEND=noninteractive &&
-            apt-get update &&
-            apt-get install -y --no-install-recommends \
-              build-essential \
-              ca-certificates \
-              clang \
-              cmake \
-              git \
-              libegl1-mesa-dev \
-              libgl1-mesa-dev \
-              make \
-              nasm \
-              ninja-build \
-              perl \
-              python3 \
-              zlib1g-dev &&
-            cmake -S . -B build -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_C_COMPILER=clang \
-              -DFFMPEG_PROVIDER=external &&
-            cmake --build build --config Release
-          '
-
-      - name: Configure (Windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DSTATIC=ON \
-            -DFFMPEG_PROVIDER=external \
-            -DENABLE_GPL_CODECS=ON
-
-      - name: Configure (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          LLVM_PREFIX="$(brew --prefix llvm)"
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_C_COMPILER="${LLVM_PREFIX}/bin/clang" \
-            -DCMAKE_BUILD_TYPE=Release
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: cmake --build build --config Release
+        shell: pwsh
+        run: |
+          xmake f -y --toolchain=clang --static=y --ffmpeg=y --gpl=y
+          xmake -y -j$env:NUMBER_OF_PROCESSORS
+          xmake install -o dist
 
-      - name: Build
+      - name: Build (macOS)
         if: runner.os == 'macOS'
-        run: cmake --build build --config Release
+        run: |
+          xmake f -y --toolchain=clang --ffmpeg=y --gpl=y
+          xmake -y -j$(sysctl -n hw.ncpu)
+          xmake install -o dist
 
-      - name: Upload Artifact (Linux)
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: spine2dump-${{ matrix.config.name }}
-          path: build/${{ matrix.config.binary }}
-
-      - name: Install Artifact (Windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: cmake --install build --prefix dist --component Runtime
-
-      - name: Install Artifact (macOS)
-        if: runner.os == 'macOS'
-        run: cmake --install build --prefix dist --component Runtime
-
-      - name: Upload Artifact (Windows/macOS)
-        if: runner.os != 'Linux'
-        uses: actions/upload-artifact@v4
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
         with:
           name: spine2dump-${{ matrix.config.name }}
           path: dist/bin/*
@@ -168,7 +99,7 @@ jobs:
           - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump, libc: glibc }
           - { name: linux-x86_64-musl, os: ubuntu-latest, binary: spine2dump, libc: musl }
           - { name: windows-x86_64, os: windows-latest, binary: spine2dump.exe }
-          - { name: macos-x86_64, os: macos-latest, binary: spine2dump }
+          - { name: macos-x86_64, os: macos-15-intel, binary: spine2dump }
           - { name: macos-aarch64, os: macos-latest, binary: spine2dump }
     steps:
       - name: Skip Verify
@@ -177,7 +108,7 @@ jobs:
 
       - name: Download Artifact
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: spine2dump-${{ matrix.config.name }}
           path: verify
@@ -190,9 +121,7 @@ jobs:
             export DEBIAN_FRONTEND=noninteractive &&
             apt-get update -qq &&
             apt-get install -y --no-install-recommends binutils libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri >/dev/null &&
-            echo "== Dynamic dependencies ==" &&
             readelf -d /app/${{ matrix.config.binary }} | grep NEEDED || true &&
-            echo "== Run ==" &&
             /app/${{ matrix.config.binary }} --help
           '
 
@@ -202,9 +131,7 @@ jobs:
           chmod +x verify/${{ matrix.config.binary }}
           docker run --rm -v "$PWD/verify:/app:ro" alpine:3.20 sh -lc '
             apk add --no-cache binutils mesa-egl mesa-gl mesa-dri-gallium libc6-compat >/dev/null &&
-            echo "== Dynamic dependencies ==" &&
             readelf -d /app/${{ matrix.config.binary }} | grep NEEDED || true &&
-            echo "== Run ==" &&
             /app/${{ matrix.config.binary }} --help
           '
 
@@ -213,24 +140,18 @@ jobs:
         shell: bash
         run: |
           ls -l verify
-          echo "== Dynamic dependencies =="
           if command -v objdump >/dev/null; then
             objdump -p verify/${{ matrix.config.binary }} | grep "DLL Name" || true
           elif command -v llvm-objdump >/dev/null; then
             llvm-objdump -p verify/${{ matrix.config.binary }} | grep "DLL Name" || true
-          else
-            echo "No PE dependency dumper found."
           fi
-          echo "== Run =="
           ./verify/${{ matrix.config.binary }} --help
 
       - name: Verify (macOS)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify && runner.os == 'macOS' }}
         run: |
           chmod +x verify/${{ matrix.config.binary }}
-          echo "== Dynamic dependencies =="
           otool -L verify/${{ matrix.config.binary }}
-          echo "== Run =="
           ./verify/${{ matrix.config.binary }} --help
 
   deploy:
@@ -244,7 +165,7 @@ jobs:
     steps:
       - name: Checkout
         if: inputs.tag != ''
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Create tag
         if: inputs.tag != ''
@@ -253,7 +174,7 @@ jobs:
           git push origin ${{ inputs.tag }}
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: ./artifacts
 
@@ -268,7 +189,7 @@ jobs:
           done
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
           files: artifacts/*.zip

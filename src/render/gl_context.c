@@ -19,7 +19,7 @@ struct GlContext {
     #define WGL_CONTEXT_PROFILE_MASK_ARB 0x9126
     #define WGL_CONTEXT_CORE_PROFILE_BIT_ARB 0x0001
 
-typedef HGLRC(WINAPI* wglCreateContextAttribsARBProc)(HDC, HGLRC, const int*);
+typedef HGLRC(WINAPI* WglCreateContextAttribsArbProc)(HDC, HGLRC, const int*);
 
 GlContext* gl_context_create(void) {
     WNDCLASSA wc = {
@@ -47,7 +47,7 @@ GlContext* gl_context_create(void) {
 
     HGLRC dummy = wglCreateContext(dc);
     wglMakeCurrent(dc, dummy);
-    wglCreateContextAttribsARBProc create_attribs = (wglCreateContextAttribsARBProc)
+    WglCreateContextAttribsArbProc create_attribs = (WglCreateContextAttribsArbProc)
         wglGetProcAddress("wglCreateContextAttribsARB");
     if (create_attribs == NULL) {
         wglMakeCurrent(NULL, NULL);
