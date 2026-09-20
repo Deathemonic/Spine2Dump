@@ -19,6 +19,10 @@ target("spine2dump", {
 	packages = { "argtable3", "libfort", "libspng", "libuv", "sokol", "zf_log" },
 })
 
+if is_plat("linux", "macosx") then
+	target("spine2dump", { packages = "openmp" })
+end
+
 if has_config("ffmpeg") then
 	target("spine2dump", { packages = "ffmpeg", defines = "HAVE_FFMPEG=1" })
 end
@@ -36,15 +40,12 @@ elseif is_plat("macosx") then
 	target("spine2dump", {
 		frameworks = "OpenGL",
 		rpathdirs = "@executable_path",
-		cxflags = { "-fopenmp", { force = true } },
-		ldflags = { "-fopenmp", { force = true } },
 	})
 else
 	target("spine2dump", {
 		syslinks = { "EGL", "GL" },
 		rpathdirs = "$ORIGIN",
-		cxflags = { "-fopenmp", { force = true } },
-		ldflags = { "-fopenmp", "-static-libgcc", { force = true } },
+		ldflags = { "-static-libgcc", { force = true } },
 	})
 	if has_config("static") then
 		target("spine2dump", { ldflags = { "-static-libgcc", { force = true } } })
@@ -77,10 +78,10 @@ for _, version in ipairs(SPINE_VERSIONS) do
 		kind = "object",
 		files = versioned_sources,
 		includedirs = include_dirs,
-		packages = { prefix, "zf_log" },
+		packages = is_plat("linux", "macosx") and { prefix, "zf_log", "openmp" } or { prefix, "zf_log" },
 		forceincludes = "spine_prefix_" .. tag .. ".h",
 		defines = { 'RUNTIME_VERSION="' .. version .. '"', "RUNTIME_MAJOR=" .. major, "RUNTIME_MINOR=" .. minor },
-		cxflags = { "-fopenmp", { force = true } },
+		cxflags = is_plat("windows", "mingw", "msys") and { "-fopenmp", { force = true } } or nil,
 	})
 
 	target("spine2dump", { deps = "spine2dump-" .. tag, packages = prefix })

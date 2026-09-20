@@ -103,7 +103,7 @@ jobs:
       - name: Build (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install llvm nasm
+          brew install llvm nasm libomp
           LLVM_PREFIX="$(brew --prefix llvm)"
           export PATH="${LLVM_PREFIX}/bin:${PATH}"
           xmake f -y --toolchain=clang --cc="${LLVM_PREFIX}/bin/clang" --cxx="${LLVM_PREFIX}/bin/clang++" --ffmpeg=y --gpl=y
