@@ -1,12 +1,6 @@
 add_requires("argtable3", "libspng 0.7.4", "libuv 1.52.1")
 add_requires("sokol master", "zf_log master", "libfort v0.4.2")
 
-if is_plat("linux", "macosx") then
-	local libomp_configs = is_plat("linux") and { system = false, configs = { shared = false } } or {}
-	add_requires("libomp", libomp_configs)
-	add_requires("openmp")
-end
-
 for _, version in ipairs(SPINE_VERSIONS) do
 	add_requires("spine_runtime " .. version, { alias = "sp" .. version:gsub("%.", "") })
 end

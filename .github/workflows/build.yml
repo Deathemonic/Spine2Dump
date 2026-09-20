@@ -62,7 +62,7 @@ jobs:
         if: runner.os == 'Linux' && matrix.config.libc == 'glibc'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libegl1-mesa-dev libgl1-mesa-dev
+          sudo apt-get install -y --no-install-recommends libegl1-mesa-dev libgl1-mesa-dev libomp-dev
 
       - name: Build (Linux glibc)
         if: runner.os == 'Linux' && matrix.config.libc == 'glibc'
@@ -81,6 +81,7 @@ jobs:
               curl \
               git \
               mesa-dev \
+              openmp-dev \
               p7zip \
               perl \
               unzip \
