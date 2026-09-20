@@ -12,73 +12,76 @@ for _, source in ipairs(versioned_sources) do
 	common_sources = common_sources .. "|" .. source:sub(#"$(projectdir)/src/" + 1)
 end
 
-target("spine2dump")
-set_kind("binary")
-add_files(common_sources)
-add_includedirs(include_dirs)
-add_packages("argtable3", "libfort", "libspng", "libuv", "sokol", "zf_log")
+target("spine2dump", {
+	kind = "binary",
+	files = common_sources,
+	includedirs = include_dirs,
+	packages = { "argtable3", "libfort", "libspng", "libuv", "sokol", "zf_log" },
+})
 
 if has_config("ffmpeg") then
-	add_packages("ffmpeg")
-	add_defines("HAVE_FFMPEG=1")
+	target("spine2dump", { packages = "ffmpeg", defines = "HAVE_FFMPEG=1" })
 end
 
 if is_plat("windows", "mingw", "msys") then
-	add_syslinks("opengl32", "gdi32", "user32", "ws2_32", "iphlpapi", "userenv")
-	add_cxflags("-fopenmp", { force = true })
-	add_ldflags("-fopenmp", { force = true })
+	target("spine2dump", {
+		syslinks = { "opengl32", "gdi32", "user32", "ws2_32", "iphlpapi", "userenv" },
+		cxflags = { "-fopenmp", { force = true } },
+		ldflags = { "-fopenmp", { force = true } },
+	})
 	if has_config("static") then
-		add_ldflags("-static", { force = true })
+		target("spine2dump", { ldflags = { "-static", { force = true } } })
 	end
 elseif is_plat("macosx") then
-	add_frameworks("OpenGL")
-	add_rpathdirs("@executable_path")
-	add_cxflags("-fopenmp", { force = true })
-	add_ldflags("-fopenmp", { force = true })
+	target("spine2dump", {
+		frameworks = "OpenGL",
+		rpathdirs = "@executable_path",
+		cxflags = { "-fopenmp", { force = true } },
+		ldflags = { "-fopenmp", { force = true } },
+	})
 else
-	add_syslinks("EGL", "GL")
-	add_rpathdirs("$ORIGIN")
-	add_cxflags("-fopenmp=libgomp", { force = true })
-	add_ldflags("-fopenmp=libgomp", "-l:libgomp.a", { force = true })
+	target("spine2dump", {
+		syslinks = { "EGL", "GL" },
+		rpathdirs = "$ORIGIN",
+		cxflags = { "-fopenmp", { force = true } },
+		ldflags = { "-fopenmp", "-static-libgcc", { force = true } },
+	})
 	if has_config("static") then
-		add_ldflags("-static-libgcc", { force = true })
+		target("spine2dump", { ldflags = { "-static-libgcc", { force = true } } })
 	end
 end
 
-on_config(function(target)
-	if not has_config("static") then
-		return
-	end
-	if target:is_plat("macosx") then
-		raise("static=y is unsupported on macOS: Apple's linker cannot produce fully static executables")
-	end
-	if target:is_plat("linux") then
-		local machine = os.iorunv(target:tool("cc"), { "-dumpmachine" })
-		if not (machine and machine:find("musl", 1, true)) then
-			raise("static=y on Linux expects a musl compiler target, got '%s'", (machine or "unknown"):trim())
+target("spine2dump", {
+	on_config = function(target)
+		if not has_config("static") then
+			return
 		end
-	end
-end)
+		if target:is_plat("macosx") then
+			raise("static=y is unsupported on macOS: Apple's linker cannot produce fully static executables")
+		end
+		if target:is_plat("linux") then
+			local machine = os.iorunv(target:tool("cc"), { "-dumpmachine" })
+			if not (machine and machine:find("musl", 1, true)) then
+				raise("static=y on Linux expects a musl compiler target, got '%s'", (machine or "unknown"):trim())
+			end
+		end
+	end,
+})
 
 for _, version in ipairs(SPINE_VERSIONS) do
 	local tag = version:gsub("%.", "_")
 	local prefix = "sp" .. version:gsub("%.", "")
 	local major, minor = version:match("(%d+)%.(%d+)")
 
-	target("spine2dump-" .. tag)
-	set_kind("object")
-	add_files(versioned_sources)
-	add_includedirs(include_dirs)
-	add_packages(prefix, "zf_log")
-	add_forceincludes("spine_prefix_" .. tag .. ".h")
-	add_defines('RUNTIME_VERSION="' .. version .. '"', "RUNTIME_MAJOR=" .. major, "RUNTIME_MINOR=" .. minor)
-	if is_plat("linux") then
-		add_cxflags("-fopenmp=libgomp", { force = true })
-	else
-		add_cxflags("-fopenmp", { force = true })
-	end
+	target("spine2dump-" .. tag, {
+		kind = "object",
+		files = versioned_sources,
+		includedirs = include_dirs,
+		packages = { prefix, "zf_log" },
+		forceincludes = "spine_prefix_" .. tag .. ".h",
+		defines = { 'RUNTIME_VERSION="' .. version .. '"', "RUNTIME_MAJOR=" .. major, "RUNTIME_MINOR=" .. minor },
+		cxflags = { "-fopenmp", { force = true } },
+	})
 
-	target("spine2dump")
-	add_deps("spine2dump-" .. tag)
-	add_packages(prefix)
+	target("spine2dump", { deps = "spine2dump-" .. tag, packages = prefix })
 end
