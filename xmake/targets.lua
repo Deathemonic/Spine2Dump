@@ -43,8 +43,8 @@ else
 	target("spine2dump", {
 		syslinks = { "EGL", "GL" },
 		rpathdirs = "$ORIGIN",
-		cxflags = { "-fopenmp", { force = true } },
-		ldflags = { "-fopenmp", "-static-libgcc", { force = true } },
+		cxflags = { "-fopenmp=libgomp", { force = true } },
+		ldflags = { "-fopenmp=libgomp", "-l:libgomp.a", { force = true } },
 	})
 	if has_config("static") then
 		target("spine2dump", { ldflags = { "-static-libgcc", { force = true } } })
@@ -80,7 +80,7 @@ for _, version in ipairs(SPINE_VERSIONS) do
 		packages = { prefix, "zf_log" },
 		forceincludes = "spine_prefix_" .. tag .. ".h",
 		defines = { 'RUNTIME_VERSION="' .. version .. '"', "RUNTIME_MAJOR=" .. major, "RUNTIME_MINOR=" .. minor },
-		cxflags = { "-fopenmp", { force = true } },
+		cxflags = is_plat("linux") and { "-fopenmp=libgomp", { force = true } } or { "-fopenmp", { force = true } },
 	})
 
 	target("spine2dump", { deps = "spine2dump-" .. tag, packages = prefix })
