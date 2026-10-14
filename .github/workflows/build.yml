@@ -69,9 +69,8 @@ jobs:
       - name: Cache xmake dependencies
         uses: actions/cache@v4
         with:
-          path: |
-            .ci/packages
-            .ci/downloads
+          # Cache installed dependencies, not root-owned source/build scratch files.
+          path: .ci/packages
           key: xmake-deps-v1-${{ matrix.config.name }}-${{ env.XMAKE_VERSION }}-${{ hashFiles('xmake.lua', 'xmake/**.lua') }}
 
       - name: Setup MSYS2 (Windows)
