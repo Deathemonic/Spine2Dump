@@ -1,4 +1,6 @@
-add_requireconfs("*", "**.zlib", "**.x264", { system = false, configs = { shared = false } })
+if is_mode("release") then
+	add_requireconfs("*", "**.zlib", "**.x264", { system = false, configs = { shared = false } })
+end
 
 add_requires("argtable3", "libspng 0.7.4", "libuv 1.52.1")
 add_requires("sokol 2026.09.14")

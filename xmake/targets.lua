@@ -19,10 +19,6 @@ target("spine2dump", {
 	packages = { "argtable3", "libfort", "libspng", "libuv", "sokol", "zf_log" },
 })
 
-target("spine2dump")
-set_toolset("ld", "clang")
-target_end()
-
 if has_config("ffmpeg") then
 	target("spine2dump", { packages = "ffmpeg", defines = "HAVE_FFMPEG=1" })
 end
@@ -59,6 +55,8 @@ target("spine2dump", {
 		end
 	end,
 	on_config = function(target)
+		local compiler = target:tool("cc")
+		target:set("toolset.ld", compiler)
 		if not has_config("static") then
 			return
 		end
