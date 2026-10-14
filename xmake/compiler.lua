@@ -7,7 +7,7 @@ add_rules("plugin.compile_commands.autoupdate", { lsp = "clangd" })
 
 set_policy("check.auto_ignore_flags", false)
 
-if has_config("warnings_as_errors") then
+if has_config("warn_as_err") then
 	set_warnings("allextra", "error")
 else
 	set_warnings("allextra")

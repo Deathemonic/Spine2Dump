@@ -1,5 +1,8 @@
+add_requireconfs("*", "**.zlib", "**.x264", { system = false, configs = { shared = false } })
+
 add_requires("argtable3", "libspng 0.7.4", "libuv 1.52.1")
-add_requires("sokol master", "zf_log master", "libfort v0.4.2")
+add_requires("sokol 2026.09.14")
+add_requires("zf_log master", "libfort v0.4.2")
 
 for _, version in ipairs(SPINE_VERSIONS) do
 	add_requires("spine_runtime " .. version, { alias = "sp" .. version:gsub("%.", "") })

@@ -7,6 +7,7 @@ local function ffmpeg_install_from_source(package, autoconf)
 		"--disable-avdevice",
 		"--disable-network",
 		"--disable-everything",
+		"--disable-autodetect",
 		"--disable-audiotoolbox",
 		"--disable-bzlib",
 		"--disable-iconv",
