@@ -72,7 +72,7 @@ jobs:
           path: |
             .ci/packages
             .ci/downloads
-          key: xmake-deps-v1-${{ matrix.config.name }}-${{ env.XMAKE_VERSION }}-${{ hashFiles('xmake.lua', 'xmake/**.lua', '.github/workflows/build.yml') }}
+          key: xmake-deps-v1-${{ matrix.config.name }}-${{ env.XMAKE_VERSION }}-${{ hashFiles('xmake.lua', 'xmake/**.lua') }}
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
@@ -118,7 +118,7 @@ jobs:
               git \
               mesa-dev \
               nasm \
-              ninja \
+              ninja-build \
               openmp-dev \
               p7zip \
               perl \
@@ -126,6 +126,8 @@ jobs:
               xmake \
               zlib-dev \
               zlib-static &&
+            # Alpine's virtual ninja package selects Samurai; use real Ninja.
+            export PATH="/usr/lib/ninja-build/bin:$PATH" &&
             xmake f -y -m release --toolchain=clang --static=y --ffmpeg=y --gpl=y &&
             xmake -y -j$(nproc) &&
             xmake install -o dist spine2dump
