@@ -126,7 +126,7 @@ jobs:
               xmake \
               zlib-dev \
               zlib-static &&
-            # Alpine's virtual ninja package selects Samurai; use real Ninja.
+            # The Alpine virtual ninja package selects Samurai; use real Ninja.
             export PATH="/usr/lib/ninja-build/bin:$PATH" &&
             xmake f -y -m release --toolchain=clang --static=y --ffmpeg=y --gpl=y &&
             xmake -y -j$(nproc) &&
