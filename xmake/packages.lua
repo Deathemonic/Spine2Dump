@@ -1,3 +1,7 @@
+-- Release artifacts must not silently link libraries installed on the runner.
+-- Apply this to transitive dependencies (notably zlib and x264) as well.
+add_requireconfs("*", "**.zlib", "**.x264", { system = false, configs = { shared = false } })
+
 add_requires("argtable3", "libspng 0.7.4", "libuv 1.52.1")
 add_requires("sokol master", "zf_log master", "libfort v0.4.2")
 

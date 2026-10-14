@@ -17,6 +17,14 @@ on:
         type: boolean
         default: false
 
+env:
+  XMAKE_VERSION: "3.1.1"
+  XMAKE_GLOBALDIR: ${{ github.workspace }}/.ci/global
+  XMAKE_PKG_INSTALLDIR: ${{ github.workspace }}/.ci/packages
+  XMAKE_PKG_CACHEDIR: ${{ github.workspace }}/.ci/downloads
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+
 jobs:
   build:
     name: Build for ${{ matrix.config.name }}
@@ -25,8 +33,8 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump, libc: glibc }
-          - { name: linux-x86_64-musl, os: ubuntu-latest, binary: spine2dump, libc: musl }
+          - { name: linux-x86_64, os: ubuntu-24.04, binary: spine2dump, libc: glibc }
+          - { name: linux-x86_64-musl, os: ubuntu-24.04, binary: spine2dump, libc: musl }
           - { name: windows-x86_64, os: windows-latest, binary: spine2dump.exe }
           - { name: macos-x86_64, os: macos-15-intel, binary: spine2dump }
           - { name: macos-aarch64, os: macos-latest, binary: spine2dump }
@@ -34,13 +42,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup xmake
-        if: matrix.config.libc != 'musl'
+      # The setup action compiles xmake from source on Unix. Use release bundles.
+      - name: Setup xmake (Unix)
+        if: runner.os != 'Windows' && matrix.config.libc != 'musl'
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64) platform=linux.x86_64 ;;
+            Darwin-x86_64) platform=macos.x86_64 ;;
+            Darwin-arm64) platform=macos.arm64 ;;
+            *) echo "Unsupported xmake host" >&2; exit 1 ;;
+          esac
+          mkdir -p "${RUNNER_TEMP}/xmake-bin"
+          curl --fail --location --retry 3 \
+            "https://github.com/xmake-io/xmake/releases/download/v${XMAKE_VERSION}/xmake-bundle-v${XMAKE_VERSION}.${platform}" \
+            -o "${RUNNER_TEMP}/xmake-bin/xmake"
+          chmod +x "${RUNNER_TEMP}/xmake-bin/xmake"
+          echo "${RUNNER_TEMP}/xmake-bin" >> "$GITHUB_PATH"
+          "${RUNNER_TEMP}/xmake-bin/xmake" --version
+
+      - name: Setup xmake (Windows)
+        if: runner.os == 'Windows'
         uses: xmake-io/github-action-setup-xmake@v1
         with:
-          xmake-version: latest
-          build-cache: true
-          project-path: '.'
+          xmake-version: ${{ env.XMAKE_VERSION }}
+
+      - name: Cache xmake dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .ci/packages
+            .ci/downloads
+          key: xmake-deps-v1-${{ matrix.config.name }}-${{ env.XMAKE_VERSION }}-${{ hashFiles('xmake.lua', 'xmake/**.lua', '.github/workflows/build.yml') }}
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
@@ -67,20 +99,24 @@ jobs:
       - name: Build (Linux glibc)
         if: runner.os == 'Linux' && matrix.config.libc == 'glibc'
         run: |
-          xmake f -y -v --toolchain=clang --ffmpeg=y --gpl=y
-          xmake -y -v -j$(nproc)
-          xmake install -o dist
+          xmake f -y -m release --toolchain=clang --ffmpeg=y --gpl=y
+          xmake -y -j$(nproc)
+          xmake install -o dist spine2dump
 
       - name: Build (Linux musl)
         if: runner.os == 'Linux' && matrix.config.libc == 'musl'
         run: |
-          docker run --rm -v "$PWD:/work" -w /work -e XMAKE_ROOT=y alpine:edge sh -lc '
+          docker run --rm -v "$PWD:/work" -w /work -e XMAKE_ROOT=y \
+            -e XMAKE_GLOBALDIR=/work/.ci/global \
+            -e XMAKE_PKG_INSTALLDIR=/work/.ci/packages \
+            -e XMAKE_PKG_CACHEDIR=/work/.ci/downloads alpine:edge sh -lc '
             apk add --no-cache \
               build-base \
               clang \
               curl \
               git \
               mesa-dev \
+              nasm \
               openmp-dev \
               p7zip \
               perl \
@@ -88,18 +124,18 @@ jobs:
               xmake \
               zlib-dev \
               zlib-static &&
-            xmake f -y -v --toolchain=clang --static=y --ffmpeg=y --gpl=y &&
-            xmake -y -v -j$(nproc) &&
-            xmake install -o dist
+            xmake f -y -m release --toolchain=clang --static=y --ffmpeg=y --gpl=y &&
+            xmake -y -j$(nproc) &&
+            xmake install -o dist spine2dump
           '
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          xmake f -y -v --toolchain=clang --static=y --ffmpeg=y --gpl=y
-          xmake -y -v -j$(nproc)
-          xmake install -o dist
+          xmake f -y -m release --toolchain=clang --static=y --ffmpeg=y --gpl=y
+          xmake -y -j$(nproc)
+          xmake install -o dist spine2dump
 
       - name: Build (macOS)
         if: runner.os == 'macOS'
@@ -107,15 +143,16 @@ jobs:
           brew install llvm nasm
           LLVM_PREFIX="$(brew --prefix llvm)"
           export PATH="${LLVM_PREFIX}/bin:${PATH}"
-          xmake f -y -v --toolchain=clang --cc="${LLVM_PREFIX}/bin/clang" --cxx="${LLVM_PREFIX}/bin/clang++" --ffmpeg=y --gpl=y
-          xmake -y -v -j$(sysctl -n hw.ncpu)
-          xmake install -o dist
+          xmake f -y -m release --toolchain=clang --cc="${LLVM_PREFIX}/bin/clang" --cxx="${LLVM_PREFIX}/bin/clang++" --ffmpeg=y --gpl=y
+          xmake -y -j$(sysctl -n hw.ncpu)
+          xmake install -o dist spine2dump
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
           name: spine2dump-${{ matrix.config.name }}
           path: dist/bin/*
+          if-no-files-found: error
 
   verify:
     name: Verify ${{ matrix.config.name }}
@@ -125,8 +162,8 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: linux-x86_64, os: ubuntu-latest, binary: spine2dump, libc: glibc }
-          - { name: linux-x86_64-musl, os: ubuntu-latest, binary: spine2dump, libc: musl }
+          - { name: linux-x86_64, os: ubuntu-24.04, binary: spine2dump, libc: glibc }
+          - { name: linux-x86_64-musl, os: ubuntu-24.04, binary: spine2dump, libc: musl }
           - { name: windows-x86_64, os: windows-latest, binary: spine2dump.exe }
           - { name: macos-x86_64, os: macos-15-intel, binary: spine2dump }
           - { name: macos-aarch64, os: macos-latest, binary: spine2dump }

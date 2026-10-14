@@ -4,6 +4,7 @@ out/
 dist/
 
 .xmake/
+.ci/
 compile_commands.json
 
 *.exe

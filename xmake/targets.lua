@@ -19,6 +19,11 @@ target("spine2dump", {
 	packages = { "argtable3", "libfort", "libspng", "libuv", "sokol", "zf_log" },
 })
 
+-- This is a C executable; clang++ would add an unnecessary C++ runtime.
+target("spine2dump")
+set_toolset("ld", "clang")
+target_end()
+
 if has_config("ffmpeg") then
 	target("spine2dump", { packages = "ffmpeg", defines = "HAVE_FFMPEG=1" })
 end
@@ -37,21 +42,24 @@ elseif is_plat("macosx") then
 		frameworks = "OpenGL",
 		rpathdirs = "@executable_path",
 		cxflags = { "-fopenmp", { force = true } },
-		ldflags = { "-fopenmp", { force = true } },
+		ldflags = { "-fopenmp", "-Wl,-headerpad_max_install_names", { force = true } },
 	})
 else
 	target("spine2dump", {
-		syslinks = { "EGL", "GL" },
 		rpathdirs = "$ORIGIN",
 		cxflags = { "-fopenmp=libgomp", { force = true } },
-		ldflags = { "-fopenmp=libgomp", "-l:libgomp.a", { force = true } },
+		-- -fopenmp at link time also adds shared libgomp, defeating the archive.
+		ldflags = { "-l:libgomp.a", "-static-libgcc", { force = true } },
+		syslinks = { "EGL", "GL", "pthread", "dl", "m" },
 	})
-	if has_config("static") then
-		target("spine2dump", { ldflags = { "-static-libgcc", { force = true } } })
-	end
 end
 
 target("spine2dump", {
+	after_install = function(target)
+		if target:is_plat("macosx") then
+			import("bundle", { rootdir = path.join(os.projectdir(), "xmake") })(target)
+		end
+	end,
 	on_config = function(target)
 		if not has_config("static") then
 			return
