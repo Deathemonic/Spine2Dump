@@ -113,10 +113,12 @@ jobs:
             apk add --no-cache \
               build-base \
               clang \
+              cmake \
               curl \
               git \
               mesa-dev \
               nasm \
+              ninja \
               openmp-dev \
               p7zip \
               perl \
