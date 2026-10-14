@@ -1,4 +1,7 @@
 set_toolchains("clang")
+if get_config("cc") then
+	set_toolset("cc", get_config("cc"))
+end
 set_languages("c23")
 add_defines("_GNU_SOURCE")
 

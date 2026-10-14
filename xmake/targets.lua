@@ -55,8 +55,8 @@ target("spine2dump", {
 		end
 	end,
 	on_config = function(target)
-		local compiler = target:tool("cc")
-		target:set("toolset.ld", compiler)
+		local compiler, name = target:tool("cc")
+		target:set("toolset.ld", name .. "@" .. compiler)
 		if not has_config("static") then
 			return
 		end
